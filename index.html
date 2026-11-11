@@ -206,7 +206,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "3";
+const APP_VERSION = "4";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -295,7 +295,12 @@ function viewImg(u){const d=document.createElement("div");d.className="imgview";
 /* finish any half-typed field before a form is redrawn */
 let reBusy=false;
 function settle(){const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();}
-const waLink=(mob,text)=>`https://wa.me/91${m10(mob)}${text?"?text="+encodeURIComponent(text):""}`;
+/* On phones, open the WhatsApp app itself (works with WhatsApp and WhatsApp Business, from any browser).
+   The wa.me web link is used only on computers. */
+const IS_PHONE=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const WA_T=IS_PHONE?"":'target="_blank" rel="noopener"';
+const waLink=(mob,text)=>IS_PHONE?`whatsapp://send?phone=91${m10(mob)}${text?"&text="+encodeURIComponent(text):""}`
+  :`https://wa.me/91${m10(mob)}${text?"?text="+encodeURIComponent(text):""}`;
 
 /* ---------- follow-up rule (based on days left to the event) ---------- */
 function nearestEvent(l){const t=T();return (l.lead_events||[]).map(e=>e.event_date).filter(d=>d&&d>=t).sort()[0]||null;}
@@ -589,7 +594,7 @@ function showSaved(id){const l=leadById(id);if(!l)return;
       <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b><span>Next call</span><b>${l.next_followup?fmtD(l.next_followup):"Not set"}</b>
       ${l.remarks?`<span>Remarks</span><b>${esc(l.remarks)}</b>`:""}</div>
     <div class="sec">Events</div>${(l.lead_events||[]).map(e=>`<div class="meta evl">${evLine(e)}</div>`).join("")}
-    <div class="btnrow"><a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile,greet)}">${icn("chat",16)} WhatsApp greeting</a>
+    <div class="btnrow"><a class="btn btn-green" ${WA_T} href="${waLink(l.mobile,greet)}">${icn("chat",16)} WhatsApp greeting</a>
       <button class="btn" onclick="closeModal();setTimeout(()=>newLead(),60)">${icn("plus",16)} Another lead</button>
       <button class="btn btn-rose" onclick="closeModal()">Open lead</button></div>`);
 }
@@ -633,7 +638,7 @@ function leadCard(l,extra){const ev=(l.lead_events||[])[0];
       ${fuChip(l)}<span class="chip ch-gray">${esc(pname(l.assigned_to)).toUpperCase()}</span><div class="sp"></div>
       ${extra||""}
       <a class="btn btn-sm" href="tel:+91${m10(l.mobile)}" onclick="event.stopPropagation()" aria-label="Call">${icn("phone",15)}</a>
-      <a class="btn btn-sm btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile)}" onclick="event.stopPropagation()" aria-label="WhatsApp">${icn("chat",15)}</a>
+      <a class="btn btn-sm btn-green" ${WA_T} href="${waLink(l.mobile)}" onclick="event.stopPropagation()" aria-label="WhatsApp">${icn("chat",15)}</a>
     </div></div>`;}
 function renderLeads(){
   $("hdrTitle").textContent="Leads";
@@ -668,7 +673,7 @@ async function renderLead(){
       <div class="btnrow">
         <a class="btn" href="tel:+91${m10(l.mobile)}">${icn("phone",16)} ${esc(l.mobile)}</a>
         ${l.alt_mobile?`<a class="btn" href="tel:+91${m10(l.alt_mobile)}">${icn("phone",16)} ${esc(l.alt_mobile)}</a>`:""}
-        <a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile)}">${icn("chat",16)} WhatsApp</a>
+        <a class="btn btn-green" ${WA_T} href="${waLink(l.mobile)}">${icn("chat",16)} WhatsApp</a>
         <button class="btn btn-gold" data-n="${esc(l.customer_name)}" onclick="menuModal(this.dataset.n,'${m10(l.mobile)}')">${icn("list",16)} Send menu</button></div>
       <div class="kv" style="margin-top:14px"><span>Source</span><b>${esc(cap(l.source))}</b>
         <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b>
@@ -919,7 +924,7 @@ function bookingText(b){
 function confirmedModal(id){const b=bkById(id);if(!b)return;
   modal(`<h2>Booking confirmed</h2><div class="chip ch-green" style="font-size:13px;padding:7px 13px">${esc(b.booking_no)}</div>
     <p class="sub" style="margin-top:12px">Send the confirmation to ${esc(b.customer_name)} on WhatsApp.</p>
-    <div class="btnrow"><a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
+    <div class="btnrow"><a class="btn btn-green" ${WA_T} href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
       <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} Send PDF</button></div>
     <div class="btnrow"><button class="btn btn-block" onclick="closeModal()">Done</button></div>`);}
 function renderBooking(){
@@ -932,7 +937,7 @@ function renderBooking(){
       <div class="row"><h2 style="font-size:27px">${esc(b.customer_name)}</h2><div class="sp"></div><span class="chip ${BKC[b.status]}">${b.status}</span></div>
       <div class="meta">${esc(b.booking_no)} · booked on ${fmtD(b.booking_date)}</div>
       <div class="btnrow"><a class="btn" href="tel:+91${m10(b.mobile)}">${icn("phone",16)} ${esc(b.mobile)}</a>
-        <a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
+        <a class="btn btn-green" ${WA_T} href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
         <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} PDF</button>
         <button class="btn" data-n="${esc(b.customer_name)}" onclick="menuModal(this.dataset.n,'${m10(b.mobile)}')">${icn("list",16)} Send menu</button></div>
       <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
@@ -1085,9 +1090,9 @@ function sendFileModal(title,name,mobile,text,shareFn,dlFn){
   const can=canShareFile(new File(["x"],"x.pdf",{type:"application/pdf"}));
   modal(`<h2>${title}</h2><p class="sub">For ${esc(name)} · ${esc(mobile)}. Two taps: first the message, then the PDF.</p>
     <div class="card glass" style="margin-top:12px"><div class="title">1. Send the message</div><div class="sub">Opens this customer's WhatsApp chat with the details typed in.</div>
-      <div class="btnrow"><a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(mobile,text)}">${icn("chat",16)} WhatsApp message</a></div></div>
+      <div class="btnrow"><a class="btn btn-green" ${WA_T} href="${waLink(mobile,text)}">${icn("chat",16)} WhatsApp message</a></div></div>
     <div class="card glass"><div class="title">2. Send the PDF</div>
-      <div class="sub">${can?"Tap Share PDF, choose WhatsApp, then pick the same customer. After step 1 they are at the top of the chat list.":"The PDF is saved to this device. Attach it in the WhatsApp chat."}</div>
+      <div class="sub">${can?"Tap Share PDF, choose WhatsApp, then pick the same customer. After step 1 they are at the top of the chat list.":"This browser cannot hand a file to WhatsApp. Download the PDF and attach it in the chat. For one-tap sharing, open and install this app from Google Chrome."}</div>
       <div class="btnrow">${can?`<button class="btn btn-gold" onclick="${shareFn}">${icn("file",16)} Share PDF</button>`:""}
         <button class="btn" onclick="${dlFn}">Download PDF</button></div></div>
     <div class="btnrow"><button class="btn btn-block" onclick="closeModal()">Done</button></div>`);
@@ -1103,7 +1108,6 @@ function pdfShare(){if(PDFJOB)shareFile(PDFJOB.file);}
 /* Menu PDFs sit next to index.html on GitHub. To add or replace one, upload a file with exactly this name. */
 const MENU_FILES={GOLD:"menu-gold.pdf",PEARL:"menu-pearl.pdf",SAPPHIRE:"menu-sapphire.pdf"};
 const MENU_OK={},MENU_BLOB={};let MENU_TO=null;
-const menuUrl=k=>new URL(MENU_FILES[k],location.href).href;
 async function menuModal(name,mobile){
   MENU_TO=mobile?{name,mobile}:null;renderMenuModal();
   const pending=Object.keys(MENU_FILES).filter(k=>MENU_OK[k]===undefined);
@@ -1117,13 +1121,18 @@ function renderMenuModal(checked){
   const rows=Object.keys(MENU_FILES).map(k=>{const ok=MENU_OK[k];
     if(ok===undefined)return `<div class="card glass"><div class="title">${cap(k)} menu</div><div class="sub">${checked?"Could not check. Internet may be off.":"Checking"}</div></div>`;
     if(!ok)return isAdmin()?`<div class="card glass"><div class="title">${cap(k)} menu</div><div class="sub">Not uploaded yet. Upload a file named ${MENU_FILES[k]} to GitHub and it will appear here.</div></div>`:"";
-    const msg=`${to?"Namaste "+to.name+" ji,\n":""}Please find the ${cap(k)} menu of ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}:\n${menuUrl(k)}`;
-    return `<div class="card glass"><div class="title">${cap(k)} menu</div>
-      <div class="btnrow">${to?`<a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(to.mobile,msg)}">${icn("chat",16)} Send link on WhatsApp</a>`:""}
-        ${can?`<button class="btn btn-gold" id="mshare_${k}" onclick="menuShare('${k}')">${icn("file",16)} Share PDF file</button>`:""}
-        <a class="btn" target="_blank" rel="noopener" href="${MENU_FILES[k]}">View</a></div></div>`;}).join("");
-  modal(`<h2>Send menu</h2><p class="sub">${to?"To "+esc(to.name)+" · "+esc(to.mobile)+". ":""}${to?"Send link goes straight to this customer's chat in one tap. ":""}${can?"Share PDF file sends the actual PDF: choose WhatsApp, then the contact.":""}</p>
-    <div id="menuList" style="margin-top:12px">${rows}</div>
+    return `<div class="card glass"><div class="row"><span class="title">${cap(k)} menu</span><div class="sp"></div>
+        ${can?`<button class="btn btn-gold btn-sm" id="mshare_${k}" onclick="menuShare('${k}')">${icn("file",15)} Send PDF</button>`
+             :`<a class="btn btn-gold btn-sm" href="${MENU_FILES[k]}" download="Rosellia-${cap(k)}-Menu.pdf">Download</a>`}
+        <a class="btn btn-sm" target="_blank" rel="noopener" href="${MENU_FILES[k]}">View</a></div></div>`;}).join("");
+  const greet=to?`Namaste ${to.name} ji,\nSharing the menu of ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"} with you.`:"";
+  modal(`<h2>Send menu</h2>
+    ${to?`<p class="sub">To ${esc(to.name)} · ${esc(to.mobile)}</p>
+      <div class="card glass" style="margin-top:12px"><div class="title">1. Open the customer's chat</div><div class="sub">So this customer comes to the top of your WhatsApp list.</div>
+        <div class="btnrow"><a class="btn btn-green" ${WA_T} href="${waLink(to.mobile,greet)}">${icn("chat",16)} Open WhatsApp chat</a></div></div>
+      <div class="sec">2. Send the menu PDF</div>`:`<div style="height:10px"></div>`}
+    <div id="menuList">${rows}</div>
+    <div class="sub">${can?"Send PDF opens the share sheet: choose WhatsApp, then the customer. The real PDF file is sent.":"This browser cannot hand a file to WhatsApp. Download the menu and attach it in the chat. For one-tap sharing, open and install this app from Google Chrome."}</div>
     <div class="btnrow"><button class="btn btn-block" onclick="closeModal()">Done</button></div>`);
 }
 async function menuShare(k){
@@ -1132,12 +1141,12 @@ async function menuShare(k){
     if(btn){btn.disabled=true;btn.textContent="Preparing menu";}
     try{const r=await fetch(MENU_FILES[k]);if(!r.ok)throw new Error("not found");
       MENU_BLOB[k]=new File([await r.blob()],`Rosellia-${cap(k)}-Menu.pdf`,{type:"application/pdf"});}
-    catch(e){toast("Could not load the menu. Check internet.");if(btn){btn.disabled=false;btn.innerHTML=icn("file",16)+" Share PDF file";}return;}
-    if(btn){btn.disabled=false;btn.innerHTML=icn("file",16)+" Share PDF file";}
+    catch(e){toast("Could not load the menu. Check internet.");if(btn){btn.disabled=false;btn.innerHTML=icn("file",15)+" Send PDF";}return;}
+    if(btn){btn.disabled=false;btn.innerHTML=icn("file",15)+" Send PDF";}
   }
   try{await navigator.share({files:[MENU_BLOB[k]]});}
-  catch(e){if(e.name==="NotAllowedError"){if(btn)btn.innerHTML=icn("file",16)+" Ready: tap again to share";toast("Menu is ready. Tap the button once more.");}
-    else if(e.name!=="AbortError")toast("Sharing is not available on this device. Use Send link instead.");}
+  catch(e){if(e.name==="NotAllowedError"){if(btn)btn.innerHTML=icn("file",15)+" Ready: tap again";toast("Menu is ready. Tap the button once more.");}
+    else if(e.name!=="AbortError")toast("Sharing is not available in this browser. Use Google Chrome.");}
 }
 
 /* ================= HALL CALENDAR ================= */
