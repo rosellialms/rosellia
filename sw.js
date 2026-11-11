@@ -1,0 +1,28 @@
+// ROSELLIA service worker: network-first for the app shell (same as SKYOPS)
+// IMPORTANT: change the version number below every time you upload a new index.html
+const CACHE = "rosellia-v1";
+const ASSETS = ["./", "./index.html", "./manifest.json"];
+
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener("activate", e => {
+  e.waitUntil(caches.keys().then(keys =>
+    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+  ).then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", e => {
+  const url = new URL(e.request.url);
+  if (url.hostname.endsWith("supabase.co")) return;   // never cache database calls
+  if (e.request.method !== "GET") return;
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (url.origin === location.origin || url.hostname.endsWith("jsdelivr.net")) {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy));
+      }
+      return res;
+    }).catch(() => caches.match(e.request))
+  );
+});

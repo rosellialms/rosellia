@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#140b12">
+<title>Rosellia Banquet</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
+<style>
+:root{
+  --bg:#f7ece8; --text:#33161f; --muted:#7d6069;
+  --glass:rgba(255,255,255,.52); --glass2:rgba(255,255,255,.74); --edge:rgba(255,255,255,.9);
+  --shine:rgba(255,255,255,.95); --shadow:rgba(120,50,70,.16); --field:rgba(255,255,255,.66);
+  --rose:#b23a5a; --gold:#946516; --line:rgba(120,60,80,.16);
+  --green:#157f3d; --red:#c62828; --amber:#b25e00; --blue:#1d5fd1; --purple:#6d3fc4;
+  --green-s:rgba(21,127,61,.14); --red-s:rgba(198,40,40,.13); --amber-s:rgba(178,94,0,.15);
+  --blue-s:rgba(29,95,209,.13); --purple-s:rgba(109,63,196,.13); --rose-s:rgba(178,58,90,.13); --gold-s:rgba(148,101,22,.16);
+  --b1:rgba(240,140,165,.65); --b2:rgba(196,160,245,.55); --b3:rgba(250,205,140,.65);
+}
+html[data-theme="dark"]{
+  --bg:#140b12; --text:#f7ecef; --muted:#b9a3ad;
+  --glass:rgba(255,255,255,.07); --glass2:rgba(255,255,255,.12); --edge:rgba(255,255,255,.16);
+  --shine:rgba(255,255,255,.2); --shadow:rgba(0,0,0,.4); --field:rgba(255,255,255,.08);
+  --rose:#f3a4b6; --gold:#e8c88e; --line:rgba(255,255,255,.12);
+  --green:#5fe08f; --red:#ff8a8a; --amber:#ffc266; --blue:#8ab6ff; --purple:#c3a6ff;
+  --green-s:rgba(95,224,143,.15); --red-s:rgba(255,138,138,.16); --amber-s:rgba(255,194,102,.16);
+  --blue-s:rgba(138,182,255,.16); --purple-s:rgba(195,166,255,.16); --rose-s:rgba(243,164,182,.16); --gold-s:rgba(232,200,142,.16);
+  --b1:rgba(200,60,105,.55); --b2:rgba(110,60,180,.45); --b3:rgba(205,140,60,.34);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Montserrat',-apple-system,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;padding-bottom:env(safe-area-inset-bottom);font-size:14px;line-height:1.45}
+body::before{content:"";position:fixed;inset:-15%;z-index:-1;pointer-events:none;filter:blur(30px);background:
+  radial-gradient(38% 34% at 12% 8%,var(--b1),transparent 70%),
+  radial-gradient(42% 38% at 92% 22%,var(--b2),transparent 70%),
+  radial-gradient(48% 42% at 55% 96%,var(--b3),transparent 70%)}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+.glass{background:var(--glass);border:1px solid var(--edge);border-radius:20px;
+  -webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);
+  box-shadow:inset 0 1px 0 var(--shine),0 10px 30px var(--shadow)}
+input,select,textarea{font-family:inherit;font-size:16px;width:100%;padding:11px 12px;border-radius:13px;
+  border:1px solid var(--edge);background:var(--field);color:var(--text);outline:none;
+  box-shadow:inset 0 1px 0 var(--shine)}
+input,select{min-width:0}
+.g2>*,.g3>*{min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--rose)}
+input[type=checkbox]{width:20px;height:20px;accent-color:var(--rose);box-shadow:none;padding:0}
+input[type=file]{font-size:13px;padding:9px}
+select option{background:#fff;color:#33161f}
+html[data-theme="dark"] select option{background:#2a1722;color:#f7ecef}
+html[data-theme="dark"] input[type=date]{color-scheme:dark}
+textarea{min-height:74px;resize:vertical}
+label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.6px}
+label b{color:var(--red)}
+.hide{display:none!important}
+h1,h2,.serif{font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;letter-spacing:.3px}
+
+header{position:sticky;top:0;z-index:50;margin:8px 10px 0;padding:9px 12px;display:flex;align-items:center;gap:9px;border-radius:18px}
+#hdrTitle{min-width:0}
+.logo{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:23px;letter-spacing:1.5px;
+  background:linear-gradient(90deg,var(--rose),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hspacer{flex:1}
+.iconbtn{width:38px;height:38px;border-radius:12px;background:var(--glass2);display:flex;align-items:center;justify-content:center;border:1px solid var(--edge);flex:none}
+.userchip{font-size:11px;font-weight:700;padding:8px 11px;border-radius:999px;background:var(--rose-s);color:var(--rose);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis}
+
+.page{max-width:820px;margin:0 auto;padding:14px 12px 60px}
+.login-wrap{max-width:390px;margin:11vh auto;padding:20px}
+.login-card{padding:30px 26px}
+.login-card h1{font-size:40px;letter-spacing:3px;background:linear-gradient(90deg,var(--rose),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);font-size:12.5px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:700;font-size:13.5px;padding:12px 17px;border-radius:14px;
+  border:1px solid var(--edge);background:var(--glass2);box-shadow:inset 0 1px 0 var(--shine);transition:transform .1s,opacity .15s}
+.btn:active{transform:scale(.97);opacity:.8}
+.btn-block{width:100%}
+.btn-rose{background:linear-gradient(135deg,#d0577a,#8f2b4c);color:#fff;border-color:rgba(255,255,255,.3)}
+.btn-green{background:linear-gradient(135deg,#27b765,#127a3f);color:#fff;border-color:rgba(255,255,255,.3)}
+.btn-red{background:linear-gradient(135deg,#e25555,#a52222);color:#fff;border-color:rgba(255,255,255,.3)}
+.btn-gold{background:linear-gradient(135deg,#e2bd7c,#a8792c);color:#2a1a08;border-color:rgba(255,255,255,.4)}
+.btn-sm{padding:8px 12px;font-size:12px;border-radius:11px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btnrow .btn{flex:1 1 auto}
+
+.notif{padding:12px 14px;margin-bottom:9px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:10px;cursor:pointer;border-radius:16px}
+.n-red{color:var(--red);background:var(--red-s)} .n-amber{color:var(--amber);background:var(--amber-s)}
+.n-blue{color:var(--blue);background:var(--blue-s)} .n-green{color:var(--green);background:var(--green-s)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.stat{padding:12px 8px;text-align:center;border-radius:16px}
+.stat b{display:block;font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:700}
+.stat span{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;margin-top:12px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(4,1fr)}}
+.mod{position:relative;padding:16px 14px;cursor:pointer;transition:transform .1s}
+.mod:active{transform:scale(.97)}
+.mod .mico{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;margin-bottom:9px}
+.mod h3{font-size:14px;font-weight:700}
+.mod p{font-size:11px;color:var(--muted);margin-top:2px}
+.mod .badge{position:absolute;top:11px;right:11px;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#d43c3c;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.c-rose .mico{background:var(--rose-s);color:var(--rose)} .c-gold .mico{background:var(--gold-s);color:var(--gold)}
+.c-green .mico{background:var(--green-s);color:var(--green)} .c-red .mico{background:var(--red-s);color:var(--red)}
+.c-blue .mico{background:var(--blue-s);color:var(--blue)} .c-purple .mico{background:var(--purple-s);color:var(--purple)}
+.c-amber .mico{background:var(--amber-s);color:var(--amber)}
+
+.tabs{display:flex;gap:7px;margin:2px 0 12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 14px;border-radius:999px;font-size:12px;font-weight:700;background:var(--glass);border:1px solid var(--edge);white-space:nowrap;color:var(--muted)}
+.tab.on{background:linear-gradient(135deg,#d0577a,#8f2b4c);color:#fff;border-color:rgba(255,255,255,.3)}
+.card{padding:14px;margin-bottom:10px;border-radius:18px}
+.card.click{cursor:pointer}
+.row{display:flex;align-items:center;gap:8px}
+.row.wrap{flex-wrap:wrap}
+.sp{flex:1}
+.title{font-weight:700;font-size:15px}
+.chip{font-size:10px;font-weight:700;padding:4px 9px;border-radius:999px;letter-spacing:.4px;white-space:nowrap;display:inline-block}
+.ch-green{background:var(--green-s);color:var(--green)} .ch-red{background:var(--red-s);color:var(--red)}
+.ch-amber{background:var(--amber-s);color:var(--amber)} .ch-blue{background:var(--blue-s);color:var(--blue)}
+.ch-purple{background:var(--purple-s);color:var(--purple)} .ch-rose{background:var(--rose-s);color:var(--rose)}
+.ch-gold{background:var(--gold-s);color:var(--gold)} .ch-gray{background:var(--line);color:var(--muted)}
+.meta{font-size:12.5px;color:var(--muted);margin-top:5px}
+.meta b{color:var(--text);font-weight:600}
+.hint{font-size:12px;font-weight:600;margin-top:7px;padding:8px 10px;border-radius:11px}
+.h-red{background:var(--red-s);color:var(--red)} .h-green{background:var(--green-s);color:var(--green)} .h-amber{background:var(--amber-s);color:var(--amber)}
+.sec{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin:18px 2px 8px}
+.empty{text-align:center;color:var(--muted);padding:40px 16px;font-size:13px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:420px){.g3{grid-template-columns:1fr 1fr}}
+.evbox{padding:12px;border-radius:16px;margin-bottom:10px;border:1px dashed var(--line);background:var(--glass)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px}
+.kv span{color:var(--muted)} .kv b{font-weight:600;text-align:right;word-break:break-word}
+.tl{border-left:2px solid var(--line);margin-left:6px;padding-left:14px}
+.tl .it{position:relative;padding-bottom:14px}
+.tl .it::before{content:"";position:absolute;left:-20px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--rose)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.thumbs img{width:74px;height:74px;object-fit:cover;border-radius:12px;border:1px solid var(--edge);cursor:pointer}
+.thumbs audio{width:100%;height:38px}
+.filelink{font-size:12px;font-weight:600;padding:8px 10px;border-radius:10px;background:var(--glass2);border:1px solid var(--edge)}
+.rooms{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:6px}
+.rm{padding:10px 4px;border-radius:12px;text-align:center;font-weight:700;font-size:13px;background:var(--green-s);color:var(--green);border:1.5px solid transparent}
+.rm small{display:block;font-size:9px;font-weight:600;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm.taken{background:var(--red-s);color:var(--red);cursor:not-allowed}
+.rm.sel{background:linear-gradient(135deg,#d0577a,#8f2b4c);color:#fff;border-color:rgba(255,255,255,.4)}
+
+.calhead{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.calhead h2{flex:1;text-align:center;font-size:24px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal .dow{font-size:10px;font-weight:700;text-align:center;color:var(--muted);padding:3px 0}
+.day{min-height:62px;border-radius:13px;padding:5px 4px;background:var(--glass);border:1px solid var(--edge);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.day.today{border-color:var(--rose);box-shadow:0 0 0 1.5px var(--rose)}
+.day.past{opacity:.5}
+.day .dn{font-size:12.5px;font-weight:700}
+.dots{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:26px}
+.dots i{height:7px;border-radius:3px;background:var(--line)}
+.dots i.k{background:#d0577a} .dots i.q{background:#d8a646}
+.day .enq{font-size:9px;font-weight:700;color:var(--blue)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:10px 2px}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:3px;margin-right:4px;vertical-align:middle}
+.rgridwrap{overflow-x:auto;border-radius:16px;padding:8px}
+table.rgrid{border-collapse:separate;border-spacing:2px;font-size:11px}
+table.rgrid th{font-weight:700;color:var(--muted);padding:3px 0;min-width:26px;text-align:center}
+table.rgrid th.we{color:var(--rose)}
+table.rgrid td{height:26px;min-width:26px;border-radius:6px;background:var(--green-s);text-align:center}
+table.rgrid td.bk{background:#d0577a;cursor:pointer}
+table.rgrid td.rn,table.rgrid th.rn{position:sticky;left:0;background:var(--bg);font-weight:700;padding:0 8px;min-width:62px;text-align:left;z-index:2;border-radius:6px}
+.bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#d0577a,#d8a646);border-radius:5px}
+
+.modal-bg{position:fixed;inset:0;background:rgba(10,4,8,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.modal{width:100%;max-width:680px;max-height:93vh;overflow-y:auto;padding:20px 16px calc(22px + env(safe-area-inset-bottom));
+  border-radius:24px 24px 0 0;background:var(--bg);border:1px solid var(--edge);box-shadow:0 -10px 40px var(--shadow)}
+html[data-theme="dark"] .modal{background:#21131d}
+@media(min-width:700px){.modal-bg{align-items:center}.modal{border-radius:24px}}
+.modal h2{font-size:25px;margin-bottom:6px}
+.toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:12px 18px;border-radius:14px;
+  font-size:13px;font-weight:600;z-index:300;max-width:92vw;text-align:center;box-shadow:0 8px 30px var(--shadow)}
+.spin{border:3px solid var(--line);border-top-color:var(--rose);border-radius:50%;width:30px;height:30px;margin:60px auto;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.imgview{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center}
+.imgview img{max-width:100%;max-height:100%}
+</style>
+</head>
+<body>
+<header id="hdr" class="glass hide">
+  <button id="backBtn" class="iconbtn hide" onclick="goBack()" aria-label="Back"></button>
+  <div class="logo" id="hdrTitle">ROSELLIA</div>
+  <div class="hspacer"></div>
+  <button class="iconbtn" id="themeBtn" aria-label="Dark or light theme"></button>
+  <button class="userchip" id="userChip" onclick="logout()"></button>
+</header>
+<div id="app"><div class="spin"></div></div>
+<div id="modalHost"></div>
+
+<script>
+/* ================= CONFIG : PASTE YOUR SUPABASE KEYS HERE ================= */
+const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
+/* ========================================================================== */
+
+const APP_VERSION = "1";
+const BUCKET = "rosellia";
+const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
+const ROOMS = 9;
+const EVENT_TYPES = ["WEDDING","RECEPTION","ENGAGEMENT","BIRTHDAY","ANNIVERSARY","RETIREMENT","PRE MARRIAGE (HALDI/MEHANDI)","SANGEET NIGHT","OTHERS"];
+const SOURCES = ["PHONE CALLS","WALK IN CUSTOMER","WHATSAPP (BANQUET)","WHATSAPP (ADS BASED ENQUIRY)","INSTAGRAM","FACEBOOK","WEBSITE","REFERENCES","EXISTING CUSTOMER","WEDDING PORTAL"];
+const MENUS = ["GOLD","PEARL","SAPPHIRE","CUSTOM"];
+const SESSIONS = ["LUNCH","DINNER","FULL DAY"];
+const SUBS = ["NEW ENQUIRY","CONTACTED","FOLLOW UP SCHEDULED","HALL VISIT DONE","QUOTATION SENT","NEGOTIATION","CUSTOMER EXPECTATION"];
+const LOST_REASONS = ["NOT INTERESTED","PRICE ISSUE","VENUE FINALIZED ELSEWHERE","DATE NOT AVAILABLE","CUSTOMER NOT RESPONDING","EVENT CANCELLED BY CUSTOMER","DUPLICATE ENQUIRY","OTHER REASON"];
+const BK_STATUS = ["AWAITING ADVANCE","ADVANCE RECEIVED","PART PAYMENT RECEIVED","FULL PAID","EVENT COMPLETED"];
+const PAY_MODES = ["CASH","UPI","BANK TRANSFER","CHEQUE","CARD"];
+const ATT_KINDS = ["VISITING CARD","SCREENSHOT","REFERENCE PHOTO","OTHER"];
+const POWER_DEFS = [["see_all","See all leads (not only own)"],["convert","Convert lead to booking"],["bookings","Edit bookings and rooms"],["payments","Record payments"]];
+
+const notConfigured = SUPABASE_URL.startsWith("PASTE");
+const sb = notConfigured ? null : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const app = $("app");
+let me=null, profiles=[], leads=[], bookings=[], BIZ={};
+let view="home", viewArg=null, rtChannel=null;
+
+/* ---------- icons ---------- */
+const ICONS={
+back:'<polyline points="15 18 9 12 15 6"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>',
+moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+plus:'<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+phone:'<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>',
+chat:'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+clock:'<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+cal:'<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+bed:'<path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/>',
+check:'<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+x:'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+chart:'<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+alert:'<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',
+star:'<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+list:'<line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>'};
+function icn(n,s=18){return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;flex:none">${ICONS[n]||""}</svg>`;}
+document.addEventListener("wheel",()=>{const a=document.activeElement;if(a&&a.type==="number")a.blur();},{passive:true});
+
+/* ---------- theme ---------- */
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem("rosellia_theme",t);}catch(e){}
+  $("themeBtn").innerHTML=icn(t==="dark"?"sun":"moon",17);
+  document.querySelector('meta[name="theme-color"]').content=t==="dark"?"#140b12":"#f7ece8";}
+$("themeBtn").onclick=()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark");
+{let t="dark";try{t=localStorage.getItem("rosellia_theme")||"dark";}catch(e){} setTheme(t);}
+$("backBtn").innerHTML=icn("back",19);
+
+/* ---------- helpers ---------- */
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const p2=n=>String(n).padStart(2,"0");
+const iso=d=>d.getFullYear()+"-"+p2(d.getMonth()+1)+"-"+p2(d.getDate());
+const T=()=>iso(new Date());
+const pd=s=>new Date(s+"T00:00:00");
+const addDays=(s,n)=>{const d=pd(s);d.setDate(d.getDate()+n);return iso(d);};
+const diff=(a,b)=>Math.round((pd(b)-pd(a))/864e5);
+const fmtD=s=>s?pd(s).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}):"Date not final";
+const fmtDs=s=>s?pd(s).toLocaleDateString("en-IN",{day:"numeric",month:"short"}):"";
+const fmtDT=s=>{if(!s)return"";const d=new Date(s);return d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("en-IN",{hour:"numeric",minute:"2-digit"});};
+const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:0});
+const cap=s=>String(s||"").toLowerCase().replace(/(^|[\s(/+])([a-z])/g,(m,a,b)=>a+b.toUpperCase());
+const m10=s=>String(s||"").replace(/\D/g,"").slice(-10);
+const num=v=>{const n=parseFloat(String(v??"").replace(/,/g,""));return isNaN(n)?null:n;};
+const opts=(arr,sel,ph)=>(ph!=null?`<option value="">${ph}</option>`:"")+arr.map(o=>{const [v,l]=Array.isArray(o)?o:[o,cap(o)];return `<option value="${esc(v)}" ${v===sel?"selected":""}>${esc(l)}</option>`;}).join("");
+let busyLock=false;
+function lock(){if(busyLock){toast("Please wait, saving");return true;}busyLock=true;return false;}
+function unlock(){busyLock=false;}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3400);}
+const isOwner=()=>me?.role==="owner";
+const isAdmin=()=>me?.role==="owner"||me?.role==="manager";
+const hasPower=p=>isAdmin()||me?.powers?.[p]===true;
+const pname=id=>profiles.find(p=>p.id===id)?.name||"Unassigned";
+const leadById=id=>leads.find(l=>l.id===id);
+const bkById=id=>bookings.find(b=>b.id===id);
+function modalOpen(){return !!$("modalHost").innerHTML;}
+function closeModal(){if(history.state&&history.state.t==="modal")history.back();else $("modalHost").innerHTML="";}
+function modal(html){const old=document.querySelector(".modal");const st=old?old.scrollTop:0;
+  $("modalHost").innerHTML=`<div class="modal-bg" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;
+  if(old)document.querySelector(".modal").scrollTop=st;
+  if(!(history.state&&history.state.t==="modal"))history.pushState({t:"modal"},"");}
+function viewImg(u){const d=document.createElement("div");d.className="imgview";d.onclick=()=>d.remove();d.innerHTML=`<img src="${u}">`;document.body.appendChild(d);}
+/* finish any half-typed field before a form is redrawn */
+let reBusy=false;
+function settle(){const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();}
+const waLink=(mob,text)=>`https://wa.me/91${m10(mob)}${text?"?text="+encodeURIComponent(text):""}`;
+
+/* ---------- follow-up rule (based on days left to the event) ---------- */
+function nearestEvent(l){const t=T();return (l.lead_events||[]).map(e=>e.event_date).filter(d=>d&&d>=t).sort()[0]||null;}
+function fuGap(days){if(days==null||days>60)return 7;if(days>=30)return 3;if(days>=15)return 2;return 1;}
+function autoNextFromEvents(evs){const t=T();const d=evs.map(e=>e.event_date).filter(x=>x&&x>=t).sort()[0];return addDays(t,fuGap(d?diff(t,d):null));}
+function fuState(l){if(l.status!=="ACTIVE")return null;if(!l.next_followup)return{k:"today",late:0,none:true};
+  const late=diff(l.next_followup,T());return {k:late<0?"upcoming":late===0?"today":late<=2?"overdue":"missed",late};}
+function daysLeftChip(l){const d=nearestEvent(l);if(!d)return `<span class="chip ch-gray">DATE NOT FINAL</span>`;
+  const n=diff(T(),d);return `<span class="chip ${n<15?"ch-red":n<30?"ch-amber":n<=60?"ch-blue":"ch-green"}">${n===0?"TODAY":n+" DAYS LEFT"}</span>`;}
+function fuChip(l){const s=fuState(l);if(!s)return"";
+  if(s.none)return `<span class="chip ch-amber">NO FOLLOW-UP SET</span>`;
+  if(s.k==="upcoming")return `<span class="chip ch-gray">CALL ${fmtDs(l.next_followup).toUpperCase()}</span>`;
+  if(s.k==="today")return `<span class="chip ch-amber">CALL TODAY</span>`;
+  return `<span class="chip ch-red">${s.k==="missed"?"MISSED":"OVERDUE"} ${s.late}D</span>`;}
+
+/* ---------- availability ---------- */
+function hallClash(date,session,hall,exBid){const out=[];if(!date||!hall)return out;
+  for(const b of bookings){if(b.id===exBid||b.status==="CANCELLED")continue;
+    for(const e of b.booking_events||[]){if(!e.active||e.event_date!==date)continue;
+      if((e.hall===hall||e.hall==="BOTH"||hall==="BOTH")&&(e.session===session||e.session==="FULL DAY"||session==="FULL DAY"))out.push({b,e});}}
+  return out;}
+function enquiriesOn(date,exLead){return leads.filter(l=>l.status==="ACTIVE"&&l.id!==exLead&&(l.lead_events||[]).some(e=>e.event_date===date));}
+function roomsTaken(ci,co,exBid){const m={};if(!ci||!co)return m;
+  for(const b of bookings){if(b.status==="CANCELLED"||b.id===exBid)continue;
+    for(const r of b.room_allocations||[])if(r.active&&r.check_in<co&&r.check_out>ci)m[r.room_no]=b;}
+  return m;}
+function availHint(e,exBid,exLead){if(!e.event_date)return"";let h="";
+  const venue=e.venue||e.hall;
+  if(venue){const c=hallClash(e.event_date,e.session,venue,exBid);
+    if(c.length)h+=`<div class="hint h-red">${icn("alert",15)} ALREADY BOOKED: ${c.map(x=>`${esc(HALLS[x.e.hall].name)}, ${cap(x.e.session)} by ${esc(x.b.customer_name)} (${esc(x.b.booking_no)})`).join("; ")}</div>`;
+    else h+=`<div class="hint h-green">${icn("check",15)} ${esc(HALLS[venue].name)} is free for ${cap(e.session)} on ${fmtD(e.event_date)}</div>`;
+    const g=num(e.guests);if(g&&g>HALLS[venue].cap)h+=`<div class="hint h-amber">${g} guests is above ${esc(HALLS[venue].name)} capacity (${HALLS[venue].cap})</div>`;}
+  const q=enquiriesOn(e.event_date,exLead);
+  if(q.length)h+=`<div class="hint h-amber">${q.length} other open enquir${q.length>1?"ies":"y"} for this date: ${q.slice(0,3).map(l=>esc(l.customer_name)).join(", ")}</div>`;
+  return h;}
+
+/* ================= AUTH ================= */
+async function init(){
+  if(notConfigured){app.innerHTML=`<div class="login-wrap"><div class="glass login-card"><h1>ROSELLIA</h1>
+    <p class="sub" style="margin-top:10px">Setup is not finished. Open index.html, paste your Supabase URL and anon key at the top of the script, and upload it again (see SETUP guide, Step 4).</p></div></div>`;return;}
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){renderLogin();return;}
+  await boot();
+}
+function renderLogin(){
+  $("hdr").classList.add("hide");
+  app.innerHTML=`<div class="login-wrap"><div class="glass login-card">
+    <h1>ROSELLIA</h1><p class="sub">Banquet team app. Sign in to continue.</p>
+    <label>Email</label><input id="lEmail" type="email" autocomplete="username">
+    <label>Password</label><input id="lPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="height:18px"></div>
+    <button class="btn btn-rose btn-block" onclick="doLogin()">Sign In</button>
+    <p id="lErr" style="color:var(--red);margin-top:12px;font-size:13px"></p>
+    <p class="sub" style="text-align:center;margin-top:14px;font-size:11px">v${APP_VERSION}</p></div></div>`;
+}
+async function doLogin(){$("lErr").textContent="";
+  const {error}=await sb.auth.signInWithPassword({email:$("lEmail").value.trim(),password:$("lPass").value});
+  if(error){$("lErr").textContent=error.message;return;}
+  await boot();}
+async function logout(){if(!confirm("Logout from Rosellia app?"))return;await sb.auth.signOut();location.reload();}
+
+async function boot(){
+  app.innerHTML=`<div class="spin"></div>`;
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){renderLogin();return;}
+  const {data:prof}=await sb.from("profiles").select("*").eq("id",user.id).single();
+  if(!prof){app.innerHTML=`<div class="empty">Profile not found. Run schema.sql in Supabase first, then ask the admin.<br><br><button class="btn" onclick="sb.auth.signOut().then(()=>location.reload())">Logout</button></div>`;return;}
+  if(!prof.active){app.innerHTML=`<div class="empty">Your login has been switched off by the admin.<br><br><button class="btn" onclick="sb.auth.signOut().then(()=>location.reload())">Logout</button></div>`;return;}
+  me=prof;
+  await loadData();
+  $("hdr").classList.remove("hide");
+  $("userChip").textContent=(me.name||"Me")+" · "+me.role.toUpperCase();
+  subscribeRealtime();
+  history.replaceState(null,"",location.pathname+location.search);
+  view="home";renderView();
+}
+async function loadData(){
+  const [p,l,b,s]=await Promise.all([
+    sb.from("profiles").select("*").order("name"),
+    sb.from("leads").select("*, lead_events(*)").order("created_at",{ascending:false}).limit(3000),
+    sb.from("bookings").select("*, booking_events(*), room_allocations(*), payments(*)").order("created_at",{ascending:false}).limit(3000),
+    sb.from("settings").select("*").eq("key","business").single()]);
+  if(l.error)toast(l.error.message);
+  profiles=p.data||[];leads=l.data||[];bookings=b.data||[];BIZ=s.data?.value||{};
+  const mine=profiles.find(x=>x.id===me.id);if(mine)me=mine;
+  for(const x of leads)(x.lead_events||[]).sort((a,c)=>a.sort-c.sort);
+  for(const x of bookings){(x.booking_events||[]).sort((a,c)=>a.sort-c.sort);(x.room_allocations||[]).sort((a,c)=>a.room_no-c.room_no);(x.payments||[]).sort((a,c)=>a.created_at<c.created_at?-1:1);}
+}
+let rtTimer=null;
+function subscribeRealtime(){
+  if(rtChannel)sb.removeChannel(rtChannel);
+  const hit=()=>{clearTimeout(rtTimer);rtTimer=setTimeout(async()=>{await loadData();softRender();},500);};
+  let ch=sb.channel("rosellia");
+  for(const t of ["leads","lead_events","followups","bookings","booking_events","room_allocations","payments","profiles","settings"])
+    ch=ch.on("postgres_changes",{event:"*",schema:"public",table:t},hit);
+  rtChannel=ch.subscribe();
+}
+/* re-draw the screen after live data arrives, but never while someone is typing in a form */
+function softRender(){if(modalOpen()||view==="leadform"||view==="settings")return;renderView(true);}
+async function refresh(){await loadData();renderView(true);}
+
+/* ---------- navigation ---------- */
+const VIEWS={home:renderHome,leadform:renderLeadForm,leads:renderLeads,lead:renderLead,followups:renderFollowups,bookings:renderBookings,
+  booking:renderBooking,calendar:renderCalendar,rooms:renderRooms,reports:renderReports,team:renderTeam,settings:renderSettings};
+function renderView(keepScroll){$("backBtn").classList.toggle("hide",view==="home");
+  $("userChip").textContent=view==="home"?(me.name||"Me")+" · "+me.role.toUpperCase():(me.name||"Me").split(" ")[0];
+  $("hdrTitle").style.fontSize=view==="home"?"":"20px";if(!keepScroll)window.scrollTo(0,0);(VIEWS[view]||renderHome)();}
+function nav(v,arg){view=v;viewArg=arg??null;history.pushState({t:"view",v,arg:viewArg},"","#"+v);renderView();}
+function goBack(){if(history.state)history.back();else{view="home";renderView();}}
+window.addEventListener("popstate",e=>{
+  if(modalOpen()){$("modalHost").innerHTML="";return;}
+  const s=e.state;if(s&&s.t==="view"){view=s.v;viewArg=s.arg;}else{view="home";viewArg=null;}
+  renderView();});
+
+/* ================= HOME ================= */
+function fuBuckets(){const b={today:[],overdue:[],missed:[],upcoming:[]};
+  for(const l of leads){const s=fuState(l);if(s)b[s.k].push(l);}
+  for(const k in b)b[k].sort((a,c)=>(a.next_followup||"")<(c.next_followup||"")?-1:1);
+  return b;}
+function upcomingEvents(days){const t=T(),lim=addDays(t,days),out=[];
+  for(const b of bookings){if(b.status==="CANCELLED")continue;for(const e of b.booking_events||[])if(e.active&&e.event_date>=t&&e.event_date<=lim)out.push({b,e});}
+  return out.sort((a,c)=>a.e.event_date<c.e.event_date?-1:1);}
+function renderHome(){
+  $("hdrTitle").textContent=(BIZ.name||"ROSELLIA").toUpperCase();
+  const fb=fuBuckets(),active=leads.filter(l=>l.status==="ACTIVE");
+  const await_=bookings.filter(b=>b.status==="AWAITING ADVANCE");
+  const liveB=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status));
+  const up=upcomingEvents(7);
+  const unassigned=active.filter(l=>!l.assigned_to);
+  const pastDue=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status)&&(b.booking_events||[]).length&&(b.booking_events||[]).every(e=>e.event_date<T()));
+  const mods=[
+    ["leadform","plus","rose","New Lead","Register an enquiry",0],
+    ["leads","users","purple","Leads","Active, lost, all",active.length],
+    ["followups","clock","amber","Follow-ups","Today, overdue, missed",fb.today.length+fb.overdue.length+fb.missed.length],
+    ["bookings","star","gold","Bookings","Payments and status",await_.length],
+    ["calendar","cal","blue","Hall Calendar","King and Queen availability",0],
+    ["rooms","bed","green","Suite Rooms","9 rooms by check-in date",0]];
+  if(isAdmin())mods.push(["reports","chart","purple","Reports","Sources and conversion",0],["settings","gear","gold","Settings","Business details, Telegram",0]);
+  if(isOwner())mods.push(["team","users","rose","Team","Staff and powers",0]);
+  app.innerHTML=`<div class="page">
+    <div class="sub" style="margin:2px 2px 10px">Namaste ${esc(me.name)}. ${new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</div>
+    ${fb.missed.length?`<div class="notif glass n-red" onclick="fuTab='missed';nav('followups')">${icn("alert")}<span>${fb.missed.length} missed follow-up${fb.missed.length>1?"s":""} (3+ days late)</span></div>`:""}
+    ${fb.overdue.length?`<div class="notif glass n-red" onclick="fuTab='overdue';nav('followups')">${icn("clock")}<span>${fb.overdue.length} overdue follow-up${fb.overdue.length>1?"s":""}</span></div>`:""}
+    ${fb.today.length?`<div class="notif glass n-amber" onclick="fuTab='today';nav('followups')">${icn("phone")}<span>${fb.today.length} lead${fb.today.length>1?"s":""} to call today</span></div>`:""}
+    ${await_.length?`<div class="notif glass n-blue" onclick="bkTab='AWAITING ADVANCE';nav('bookings')">${icn("star")}<span>${await_.length} booking${await_.length>1?"s":""} awaiting advance</span></div>`:""}
+    ${isAdmin()&&unassigned.length?`<div class="notif glass n-amber" onclick="nav('leads')">${icn("users")}<span>${unassigned.length} lead${unassigned.length>1?"s":""} not assigned to anyone</span></div>`:""}
+    ${pastDue.length&&hasPower("bookings")?`<div class="notif glass n-green" onclick="bkTab='LIVE';nav('bookings')">${icn("check")}<span>${pastDue.length} event${pastDue.length>1?"s are":" is"} over: mark as completed</span></div>`:""}
+    <div class="stats">
+      <div class="stat glass"><b>${active.length}</b><span>Active leads</span></div>
+      <div class="stat glass"><b>${fb.today.length+fb.overdue.length+fb.missed.length}</b><span>Calls due</span></div>
+      <div class="stat glass"><b>${liveB.length}</b><span>Bookings</span></div>
+      <div class="stat glass"><b>${up.length}</b><span>Events 7 days</span></div>
+    </div>
+    <div class="grid">${mods.map(([v,ic,c,h,p,n])=>`<div class="mod glass c-${c}" onclick="${v==="leadform"?"newLead()":`nav('${v}')`}">
+      ${n?`<span class="badge">${n}</span>`:""}<div class="mico">${icn(ic,21)}</div><h3>${h}</h3><p>${p}</p></div>`).join("")}</div>
+    ${up.length?`<div class="sec">Events in the next 7 days</div>`+up.map(({b,e})=>`<div class="card glass click" onclick="nav('booking','${b.id}')">
+      <div class="row"><span class="title">${esc(cap(e.event_type))}</span><div class="sp"></div><span class="chip ch-rose">${fmtDs(e.event_date).toUpperCase()}</span></div>
+      <div class="meta">${esc(b.customer_name)} · ${esc(HALLS[e.hall].name)} · ${cap(e.session)}${e.guests?" · "+e.guests+" guests":""}</div></div>`).join(""):""}
+    <p class="sub" style="text-align:center;margin-top:22px;font-size:11px">Rosellia app v${APP_VERSION}</p>
+  </div>`;
+}
+
+/* ================= LEAD FORM (new + edit) ================= */
+let LF=null;
+const blankEvent=()=>({event_type:"",other:"",event_date:"",tbd:false,session:"DINNER",guests:"",venue:"",menu:"",rooms:"",menuFiles:[]});
+function newLead(prefillDate){
+  LF={id:null,customer_name:"",mobile:"",alt_mobile:"",source:"",assigned_to:me.id,offered_price:"",remarks:"",next_followup:"",nfManual:false,
+      events:[blankEvent()],dupHtml:"",files:[],attKind:"VISITING CARD"};
+  if(prefillDate)LF.events[0].event_date=prefillDate;
+  nav("leadform");}
+function editLead(id){const l=leadById(id);if(!l)return;
+  LF={id:l.id,lead_no:l.lead_no,customer_name:l.customer_name,mobile:l.mobile,alt_mobile:l.alt_mobile||"",source:l.source,assigned_to:l.assigned_to||"",
+      offered_price:l.offered_price??"",remarks:l.remarks||"",next_followup:l.next_followup||"",nfManual:true,dupHtml:"",files:[],attKind:"SCREENSHOT",
+      events:(l.lead_events||[]).map(e=>{const known=EVENT_TYPES.includes(e.event_type);
+        return {event_type:known?e.event_type:"OTHERS",other:known?"":e.event_type,event_date:e.event_date||"",tbd:!e.event_date,session:e.session,
+                guests:e.guests??"",venue:e.venue||"",menu:e.menu||"",rooms:e.rooms||"",menuFiles:[]};})};
+  if(!LF.events.length)LF.events=[blankEvent()];
+  nav("leadform");}
+function lfRead(){if(!LF||!$("lfName"))return;
+  LF.customer_name=$("lfName").value;LF.mobile=$("lfMob").value;LF.alt_mobile=$("lfAlt").value;LF.source=$("lfSrc").value;
+  LF.assigned_to=$("lfAsg")?$("lfAsg").value:LF.assigned_to;LF.offered_price=$("lfPrice").value;LF.remarks=$("lfRem").value;
+  if($("lfNext").value!==LF.next_followup){LF.next_followup=$("lfNext").value;LF.nfManual=true;}
+  LF.events.forEach((e,i)=>{e.event_type=$("ev"+i+"type").value;e.other=$("ev"+i+"other")?$("ev"+i+"other").value:e.other;
+    e.tbd=$("ev"+i+"tbd").checked;e.event_date=e.tbd?"":$("ev"+i+"date").value;e.session=$("ev"+i+"ses").value;e.guests=$("ev"+i+"g").value;
+    e.venue=$("ev"+i+"ven").value;e.menu=$("ev"+i+"menu").value;e.rooms=$("ev"+i+"rooms").value;
+    const mf=$("ev"+i+"menufile");if(mf&&mf.files.length)e.menuFiles=[...mf.files];if(e.menu!=="CUSTOM")e.menuFiles=[];});
+  LF.attKind=$("lfAttKind").value;if($("lfFiles").files.length)LF.files=[...$("lfFiles").files];
+  if(!LF.nfManual)LF.next_followup=autoNextFromEvents(LF.events);}
+function lfRe(){if(reBusy)return;reBusy=true;try{settle();lfRead();const y=window.scrollY;renderLeadForm();window.scrollTo(0,y);}finally{reBusy=false;}}
+function lfAddEvent(){settle();lfRead();LF.events.push(blankEvent());const y=window.scrollY;renderLeadForm();window.scrollTo(0,y);}
+function lfDelEvent(i){settle();lfRead();LF.events.splice(i,1);const y=window.scrollY;renderLeadForm();window.scrollTo(0,y);}
+async function lfDup(){const m=m10($("lfMob").value);if(m.length<10)return;
+  const {data}=await sb.rpc("check_mobile",{m});const rows=(data||[]).filter(r=>r.lead_no!==LF.lead_no);
+  LF.dupHtml=rows.length?`<div class="hint h-amber">${icn("alert",15)} This number already exists: ${rows.map(r=>`${esc(r.lead_no)} ${esc(r.customer_name)} (${cap(r.status)}${r.assignee?", with "+esc(r.assignee):""})`).join("; ")}</div>`:"";
+  if($("lfDupBox"))$("lfDupBox").innerHTML=LF.dupHtml;}
+function renderLeadForm(){
+  if(!LF){newLead();return;}
+  $("hdrTitle").textContent=LF.id?"Edit "+LF.lead_no:"New Lead";
+  if(!LF.nfManual)LF.next_followup=autoNextFromEvents(LF.events);
+  const f=LF;
+  app.innerHTML=`<div class="page">
+   <div class="card glass">
+    <div class="sec" style="margin-top:0">Customer information</div>
+    <label>Customer name <b>*</b></label><input id="lfName" value="${esc(f.customer_name)}" autocomplete="off">
+    <div class="g2"><div><label>Mobile number <b>*</b></label><input id="lfMob" inputmode="numeric" maxlength="14" value="${esc(f.mobile)}" onblur="lfDup()"></div>
+    <div><label>Alternate number</label><input id="lfAlt" inputmode="numeric" maxlength="14" value="${esc(f.alt_mobile)}"></div></div>
+    <div id="lfDupBox">${f.dupHtml}</div>
+    <div class="g2"><div><label>Lead source <b>*</b></label><select id="lfSrc">${opts(SOURCES,f.source,"Select source")}</select></div>
+    <div><label>Assigned to</label>${hasPower("see_all")?`<select id="lfAsg">${opts(profiles.filter(p=>p.active).map(p=>[p.id,p.name||p.email]),f.assigned_to,"Unassigned")}</select>`:`<input value="${esc(me.name)}" disabled>`}</div></div>
+   </div>
+   ${f.events.map((e,i)=>`<div class="card glass">
+    <div class="row"><div class="sec" style="margin:0">Event ${f.events.length>1?i+1:""} details</div><div class="sp"></div>
+      ${f.events.length>1?`<button class="btn btn-sm" onclick="lfDelEvent(${i})">Remove</button>`:""}</div>
+    <label>Event type <b>*</b></label><select id="ev${i}type" onchange="lfRe()">${opts(EVENT_TYPES,e.event_type,"Select event type")}</select>
+    ${e.event_type==="OTHERS"?`<label>Write event name <b>*</b></label><input id="ev${i}other" value="${esc(e.other)}" placeholder="For example: Kitty party">`:""}
+    <div class="g2"><div><label>Event date</label><input type="date" id="ev${i}date" value="${esc(e.event_date)}" ${e.tbd?"disabled":""} onchange="lfRe()"></div>
+    <div><label>Lunch / Dinner</label><select id="ev${i}ses" onchange="lfRe()">${opts(SESSIONS,e.session)}</select></div></div>
+    <label class="row" style="text-transform:none;letter-spacing:0;font-size:13px;margin-top:9px;color:var(--text)"><input type="checkbox" id="ev${i}tbd" ${e.tbd?"checked":""} onchange="lfRe()"> Date not final yet</label>
+    <div class="g2"><div><label>Expected guests</label><input id="ev${i}g" type="number" inputmode="numeric" value="${esc(e.guests)}" onchange="lfRe()"></div>
+    <div><label>Preferred venue</label><select id="ev${i}ven" onchange="lfRe()">${opts([["KING","King Hall (350)"],["QUEEN","Queen Hall (100)"],["BOTH","Both halls"]],e.venue,"Not decided")}</select></div></div>
+    <div class="g2"><div><label>Preferred menu</label><select id="ev${i}menu" onchange="lfRe()">${opts(MENUS,e.menu,"Not decided")}</select></div>
+    <div><label>Rooms required</label><input id="ev${i}rooms" type="number" inputmode="numeric" min="0" max="9" value="${esc(e.rooms)}"></div></div>
+    ${e.menu==="CUSTOM"?`<label>Photo of the decided custom menu</label><input type="file" id="ev${i}menufile" accept="image/*" multiple>${e.menuFiles.length?`<div class="sub" style="margin-top:5px;color:var(--green)">${e.menuFiles.length} menu photo${e.menuFiles.length>1?"s":""} ready to upload</div>`:""}`:""}
+    ${availHint(e,null,f.id)}
+   </div>`).join("")}
+   <button class="btn btn-block" onclick="lfAddEvent()">${icn("plus",16)} Add another event date for this customer</button>
+   <div class="card glass" style="margin-top:10px">
+    <div class="g2"><div><label>Offered price (₹)</label><input id="lfPrice" type="number" inputmode="numeric" value="${esc(f.offered_price)}"></div>
+    <div><label>Next follow-up call</label><input id="lfNext" type="date" value="${esc(f.next_followup)}"></div></div>
+    <div class="sub" style="margin-top:6px">Follow-up date is filled automatically from the event date. You can change it.</div>
+    <label>Remarks</label><textarea id="lfRem">${esc(f.remarks)}</textarea>
+    <label>Visiting card, screenshots or reference photos</label>
+    <div class="g2"><select id="lfAttKind">${opts(ATT_KINDS,f.attKind)}</select><input type="file" id="lfFiles" accept="image/*,application/pdf" multiple></div>
+    ${f.files.length?`<div class="sub" style="margin-top:5px;color:var(--green)">${f.files.length} file${f.files.length>1?"s":""} ready to upload</div>`:""}
+   </div>
+   <button class="btn btn-rose btn-block" style="margin-top:6px;padding:15px" onclick="saveLead()">${f.id?"Save Changes":"Save Lead"}</button>
+  </div>`;
+}
+async function saveLead(){
+  settle();lfRead();const f=LF;
+  if(!f.customer_name.trim())return toast("Customer name is mandatory");
+  if(m10(f.mobile).length!==10)return toast("Enter a 10 digit mobile number");
+  if(f.alt_mobile.trim()&&m10(f.alt_mobile).length!==10)return toast("Alternate number must be 10 digits");
+  if(!f.source)return toast("Select the lead source");
+  for(const [i,e] of f.events.entries()){
+    if(!e.event_type)return toast("Select event type"+(f.events.length>1?" for event "+(i+1):""));
+    if(e.event_type==="OTHERS"&&!e.other.trim())return toast("Write the event name for Others");
+    if(!e.tbd&&!e.event_date)return toast("Select the event date or tick Date not final yet");}
+  if(lock())return;
+  try{
+    const row={customer_name:f.customer_name.trim(),mobile:m10(f.mobile),alt_mobile:f.alt_mobile.trim()?m10(f.alt_mobile):null,source:f.source,
+      offered_price:num(f.offered_price),remarks:f.remarks.trim()||null,assigned_to:f.assigned_to||null,next_followup:f.next_followup||null};
+    let lead,error;
+    if(f.id){({data:lead,error}=await sb.from("leads").update(row).eq("id",f.id).select().single());
+      if(!error){const d=await sb.from("lead_events").delete().eq("lead_id",f.id);error=d.error;}}
+    else ({data:lead,error}=await sb.from("leads").insert(row).select().single());
+    if(error)throw error;
+    const evRows=f.events.map((e,i)=>({lead_id:lead.id,event_type:e.event_type==="OTHERS"?e.other.trim().toUpperCase():e.event_type,
+      event_date:e.event_date||null,session:e.session,guests:num(e.guests),venue:e.venue||null,menu:e.menu||null,rooms:num(e.rooms)||0,sort:i}));
+    const r2=await sb.from("lead_events").insert(evRows);if(r2.error)throw r2.error;
+    if(f.files.length||f.events.some(e=>e.menuFiles.length))toast("Uploading photos");
+    if(f.files.length)await uploadFiles(lead.id,f.files,f.attKind);
+    for(const e of f.events)if(e.menuFiles.length)await uploadFiles(lead.id,e.menuFiles,"CUSTOM MENU");
+    if(!f.id)await sb.from("followups").insert({lead_id:lead.id,kind:"SYSTEM",note:"Lead registered. Source: "+cap(f.source),by_name:me.name});
+    await loadData();
+    const wasNew=!f.id;LF=null;
+    history.replaceState({t:"view",v:"lead",arg:lead.id},"","#lead");view="lead";viewArg=lead.id;renderView();
+    if(wasNew)showSaved(lead.id);else toast("Lead updated");
+  }catch(err){toast(err.message||"Could not save");}
+  finally{unlock();}
+}
+function evLine(e){return `<b>${esc(cap(e.event_type))}</b> · ${fmtD(e.event_date)}${e.event_date&&e.event_date>=T()?" ("+diff(T(),e.event_date)+" days)":""} · ${cap(e.session)}`
+  +`${(e.venue||e.hall)?" · "+esc(HALLS[e.venue||e.hall].name):""}${e.guests?" · "+e.guests+" guests":""}${e.menu?" · "+cap(e.menu)+" menu":""}${e.rooms?" · "+e.rooms+" room"+(e.rooms>1?"s":""):""}`;}
+function showSaved(id){const l=leadById(id);if(!l)return;
+  const greet=`Namaste ${l.customer_name} ji,\nThank you for your enquiry at ${BIZ.name||"Rosellia"} ${BIZ.tagline||"Banquets & Suites"}. Your enquiry number is ${l.lead_no}. We will be happy to host your event.`;
+  modal(`<h2>Lead saved</h2><div class="chip ch-green" style="font-size:13px;padding:7px 13px">${esc(l.lead_no)}</div>
+    <div class="kv" style="margin-top:14px"><span>Customer</span><b>${esc(l.customer_name)}</b><span>Mobile</span><b>${esc(l.mobile)}${l.alt_mobile?" / "+esc(l.alt_mobile):""}</b>
+      <span>Source</span><b>${esc(cap(l.source))}</b><span>Assigned to</span><b>${esc(pname(l.assigned_to))}</b>
+      <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b><span>Next call</span><b>${l.next_followup?fmtD(l.next_followup):"Not set"}</b>
+      ${l.remarks?`<span>Remarks</span><b>${esc(l.remarks)}</b>`:""}</div>
+    <div class="sec">Events</div>${(l.lead_events||[]).map(e=>`<div class="meta">${evLine(e)}</div>`).join("")}
+    <div class="btnrow"><a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile,greet)}">${icn("chat",16)} WhatsApp greeting</a>
+      <button class="btn" onclick="closeModal();setTimeout(()=>newLead(),60)">${icn("plus",16)} Another lead</button>
+      <button class="btn btn-rose" onclick="closeModal()">Open lead</button></div>`);
+}
+
+/* ---------- uploads ---------- */
+async function compressImage(file,maxKB=350){
+  const img=await createImageBitmap(file);let w=img.width,h=img.height;const maxDim=1800;
+  if(Math.max(w,h)>maxDim){const s=maxDim/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}
+  const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);
+  let q=0.85,blob;
+  for(let i=0;i<8;i++){blob=await new Promise(r=>c.toBlob(r,"image/jpeg",q));if(blob.size<=maxKB*1024)break;q-=0.13;
+    if(q<0.35){c.width=Math.round(c.width*0.8);c.height=Math.round(c.height*0.8);c.getContext("2d").drawImage(img,0,0,c.width,c.height);q=0.72;}}
+  return blob;}
+async function uploadFiles(leadId,files,kind,followupId){let ok=0;
+  for(const f of files){let blob=f,ext=(f.name.split(".").pop()||"bin").toLowerCase().replace(/[^a-z0-9]/g,""),mime=f.type||"application/octet-stream";
+    if(mime.startsWith("image/")){try{blob=await compressImage(f);ext="jpg";mime="image/jpeg";}catch(e){}}
+    else if(f.size>20*1024*1024){toast(f.name+" is bigger than 20 MB, skipped");continue;}
+    const path=`${leadId}/${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+    const {error}=await sb.storage.from(BUCKET).upload(path,blob,{contentType:mime});
+    if(error){toast("Upload failed: "+error.message);continue;}
+    const k=kind||(mime.startsWith("audio/")?"CALL RECORDING":mime.startsWith("image/")?"WHATSAPP CHAT":"OTHER");
+    const r=await sb.from("attachments").insert({lead_id:leadId,followup_id:followupId||null,kind:k,path,name:f.name,mime,size:blob.size});
+    if(r.error)toast(r.error.message);else ok++;}
+  return ok;}
+function attHtml(list,urls){if(!list.length)return"";
+  return `<div class="thumbs">${list.map(a=>{const u=urls[a.path];if(!u)return"";
+    if((a.mime||"").startsWith("image/"))return `<img src="${u}" alt="${esc(a.kind)}" title="${esc(cap(a.kind))}" onclick="viewImg(this.src)">`;
+    if((a.mime||"").startsWith("audio/")||(a.mime||"").startsWith("video/"))return `<audio controls preload="none" src="${u}"></audio>`;
+    return `<a class="filelink" href="${u}" target="_blank" rel="noopener">${icn("file",14)} ${esc(a.name||cap(a.kind))}</a>`;}).join("")}</div>`;}
+
+/* ================= LEADS LIST ================= */
+let leadsTab="ACTIVE",leadsSub="",leadsQ="",leadsLost="";
+function leadCard(l,extra){const ev=(l.lead_events||[])[0];
+  return `<div class="card glass click" onclick="nav('lead','${l.id}')">
+    <div class="row"><span class="title">${esc(l.customer_name)}</span><div class="sp"></div>
+      ${l.status==="ACTIVE"?daysLeftChip(l):l.status==="LOST"?`<span class="chip ch-red">LOST</span>`:`<span class="chip ch-green">BOOKED</span>`}</div>
+    <div class="meta">${esc(l.lead_no)} · ${esc(l.mobile)} · ${esc(cap(l.source))}</div>
+    ${ev?`<div class="meta">${evLine(ev)}${(l.lead_events||[]).length>1?` · <b>+${l.lead_events.length-1} more</b>`:""}</div>`:""}
+    <div class="row wrap" style="margin-top:9px">
+      ${l.status==="LOST"?`<span class="chip ch-gray">${esc(l.lost_reason||"")}</span>`:`<span class="chip ch-purple">${esc(l.sub_status)}</span>`}
+      ${fuChip(l)}<span class="chip ch-gray">${esc(pname(l.assigned_to)).toUpperCase()}</span><div class="sp"></div>
+      ${extra||""}
+      <a class="btn btn-sm" href="tel:+91${m10(l.mobile)}" onclick="event.stopPropagation()" aria-label="Call">${icn("phone",15)}</a>
+      <a class="btn btn-sm btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile)}" onclick="event.stopPropagation()" aria-label="WhatsApp">${icn("chat",15)}</a>
+    </div></div>`;}
+function renderLeads(){
+  $("hdrTitle").textContent="Leads";
+  const q=leadsQ.trim().toLowerCase();
+  let list=leads.filter(l=>leadsTab==="ALL"||l.status===leadsTab);
+  if(leadsTab==="ACTIVE"&&leadsSub)list=list.filter(l=>l.sub_status===leadsSub);
+  if(leadsTab==="LOST"&&leadsLost)list=list.filter(l=>l.lost_reason===leadsLost);
+  if(q)list=list.filter(l=>(l.customer_name+" "+l.mobile+" "+(l.alt_mobile||"")+" "+l.lead_no).toLowerCase().includes(q));
+  const cnt=s=>leads.filter(l=>l.status===s).length;
+  app.innerHTML=`<div class="page">
+    <div class="tabs">${[["ACTIVE","Active "+cnt("ACTIVE")],["LOST","Lost "+cnt("LOST")],["CONVERTED","Converted "+cnt("CONVERTED")],["ALL","All "+leads.length]]
+      .map(([k,l])=>`<button class="tab ${leadsTab===k?"on":""}" onclick="leadsTab='${k}';renderLeads()">${l}</button>`).join("")}</div>
+    <div class="g2" style="margin-bottom:12px"><input id="ldQ" placeholder="Search name, mobile, lead ID" value="${esc(leadsQ)}" oninput="leadsQ=this.value;clearTimeout(window._lq);window._lq=setTimeout(()=>{renderLeads();const i=$('ldQ');i.focus();i.setSelectionRange(i.value.length,i.value.length);},350)">
+      ${leadsTab==="LOST"?`<select onchange="leadsLost=this.value;renderLeads()">${opts(LOST_REASONS,leadsLost,"All lost reasons")}</select>`
+        :leadsTab==="ACTIVE"?`<select onchange="leadsSub=this.value;renderLeads()">${opts(SUBS,leadsSub,"All sub status")}</select>`:`<div></div>`}</div>
+    ${list.length?list.map(l=>leadCard(l)).join(""):`<div class="empty">No leads here yet.</div>`}
+    <button class="btn btn-rose btn-block" style="margin-top:8px" onclick="newLead()">${icn("plus",16)} New Lead</button>
+  </div>`;
+}
+
+/* ================= LEAD DETAIL ================= */
+async function renderLead(){
+  const l=leadById(viewArg);
+  if(!l){app.innerHTML=`<div class="empty">Lead not found (it may be assigned to someone else).</div>`;return;}
+  $("hdrTitle").textContent=l.lead_no;
+  const bk=bookings.find(b=>b.lead_id===l.id);
+  app.innerHTML=`<div class="page">
+    <div class="card glass">
+      <div class="row"><h2 style="font-size:27px">${esc(l.customer_name)}</h2><div class="sp"></div>
+        ${l.status==="ACTIVE"?daysLeftChip(l):l.status==="LOST"?`<span class="chip ch-red">LOST</span>`:`<span class="chip ch-green">BOOKED</span>`}</div>
+      <div class="meta">${esc(l.lead_no)} · registered ${fmtDT(l.created_at)}</div>
+      <div class="btnrow">
+        <a class="btn" href="tel:+91${m10(l.mobile)}">${icn("phone",16)} ${esc(l.mobile)}</a>
+        ${l.alt_mobile?`<a class="btn" href="tel:+91${m10(l.alt_mobile)}">${icn("phone",16)} ${esc(l.alt_mobile)}</a>`:""}
+        <a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(l.mobile)}">${icn("chat",16)} WhatsApp</a></div>
+      <div class="kv" style="margin-top:14px"><span>Source</span><b>${esc(cap(l.source))}</b>
+        <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b>
+        ${l.status==="ACTIVE"?`<span>Next call</span><b>${l.next_followup?fmtD(l.next_followup):"Not set"} ${fuChip(l)}</b>`:""}
+        ${l.remarks?`<span>Remarks</span><b>${esc(l.remarks)}</b>`:""}
+        ${l.expectations?`<span>Customer expectation</span><b>${esc(l.expectations)}</b>`:""}
+        ${l.status==="LOST"?`<span>Lost reason</span><b>${esc(cap(l.lost_reason))}${l.lost_note?": "+esc(l.lost_note):""}</b>`:""}</div>
+      ${l.status==="ACTIVE"?`<div class="g2"><div><label>Sub status</label><select onchange="setSub('${l.id}',this.value)">${opts(SUBS.includes(l.sub_status)?SUBS:[l.sub_status,...SUBS],l.sub_status)}</select></div>
+        <div><label>Assigned to</label>${hasPower("see_all")?`<select onchange="assignLead('${l.id}',this.value)">${opts(profiles.filter(p=>p.active||p.id===l.assigned_to).map(p=>[p.id,p.name||p.email]),l.assigned_to||"","Unassigned")}</select>`:`<input value="${esc(pname(l.assigned_to))}" disabled>`}</div></div>`:""}
+    </div>
+    <div class="sec">Events</div>
+    ${(l.lead_events||[]).map(e=>`<div class="card glass"><div class="meta" style="margin:0">${evLine(e)}</div>${l.status==="ACTIVE"?availHint(e,null,l.id):""}</div>`).join("")}
+    ${l.status==="ACTIVE"?`<div class="btnrow">
+        <button class="btn btn-rose" onclick="fuModal('${l.id}')">${icn("phone",16)} Log follow-up</button>
+        <button class="btn btn-gold" onclick="quoteModal('${l.id}')">${icn("file",16)} Quotation</button></div>
+      <div class="btnrow">
+        ${hasPower("convert")?`<button class="btn btn-green" onclick="openConvert('${l.id}')">${icn("check",16)} Convert to booking</button>`:""}
+        <button class="btn btn-red" onclick="lostModal('${l.id}')">${icn("x",16)} Mark lost</button>
+        <button class="btn" onclick="editLead('${l.id}')">Edit</button></div>`
+     :l.status==="LOST"?`<div class="btnrow"><button class="btn btn-gold" onclick="reopenLead('${l.id}')">Reopen this lead</button></div>`
+     :bk?`<div class="btnrow"><button class="btn btn-green" onclick="nav('booking','${bk.id}')">${icn("star",16)} Open booking</button></div>`:""}
+    <div class="sec">Photos and files</div><div id="ldAtt" class="card glass"><div class="sub">Loading</div></div>
+    <div class="btnrow" style="margin-top:0"><select id="ldAttKind" style="flex:1">${opts([...ATT_KINDS,"CUSTOM MENU"],"SCREENSHOT")}</select>
+      <input type="file" id="ldAttFile" style="flex:2" accept="image/*,audio/*,application/pdf" multiple onchange="addLeadFiles('${l.id}')"></div>
+    <div class="sec">Follow-up history</div><div id="ldTl"><div class="sub">Loading</div></div>
+    ${isAdmin()?`<div class="btnrow" style="margin-top:22px"><button class="btn btn-sm" style="color:var(--red)" onclick="deleteLead('${l.id}')">Delete this lead permanently</button></div>`:""}
+  </div>`;
+  const [fu,at]=await Promise.all([
+    sb.from("followups").select("*").eq("lead_id",l.id).order("created_at",{ascending:false}),
+    sb.from("attachments").select("*").eq("lead_id",l.id).order("created_at",{ascending:false})]);
+  if(view!=="lead"||viewArg!==l.id)return;
+  const atts=at.data||[],urls={};
+  if(atts.length){const {data}=await sb.storage.from(BUCKET).createSignedUrls(atts.map(a=>a.path),3600);(data||[]).forEach((d,i)=>{if(d.signedUrl)urls[atts[i].path]=d.signedUrl;});}
+  if(view!=="lead"||viewArg!==l.id||!$("ldAtt"))return;
+  const gen=atts.filter(a=>!a.followup_id);
+  $("ldAtt").innerHTML=gen.length?attHtml(gen,urls):`<div class="sub">No files uploaded yet.</div>`;
+  const KC={CALL:"ch-blue",WHATSAPP:"ch-green",VISIT:"ch-purple",QUOTE:"ch-gold",NOTE:"ch-gray",SYSTEM:"ch-gray"};
+  $("ldTl").innerHTML=(fu.data||[]).length?`<div class="tl">${fu.data.map(x=>`<div class="it">
+      <div class="row wrap"><span class="chip ${KC[x.kind]||"ch-gray"}">${esc(x.kind)}</span>${x.sub_status?`<span class="chip ch-purple">${esc(x.sub_status)}</span>`:""}
+        <span class="sub">${fmtDT(x.created_at)} · ${esc(x.by_name||"")}</span></div>
+      ${x.note?`<div style="margin-top:5px;font-size:13.5px;white-space:pre-wrap">${esc(x.note)}</div>`:""}
+      ${x.next_followup?`<div class="sub" style="margin-top:3px">Next call set for ${fmtD(x.next_followup)}</div>`:""}
+      ${attHtml(atts.filter(a=>a.followup_id===x.id),urls)}</div>`).join("")}</div>`:`<div class="empty">No follow-ups logged yet.</div>`;
+}
+async function addLeadFiles(id){const files=[...$("ldAttFile").files];if(!files.length||lock())return;
+  toast("Uploading");try{const n=await uploadFiles(id,files,$("ldAttKind").value);if(n)toast(n+" file"+(n>1?"s":"")+" uploaded");renderLead();}finally{unlock();}}
+async function leadUpdate(id,patch,logNote,kind){
+  const {error}=await sb.from("leads").update(patch).eq("id",id);if(error){toast(error.message);return false;}
+  if(logNote)await sb.from("followups").insert({lead_id:id,kind:kind||"SYSTEM",note:logNote,sub_status:patch.sub_status||null,by_name:me.name});
+  await refresh();return true;}
+async function setSub(id,val){const l=leadById(id);
+  if(val==="CUSTOMER EXPECTATION"){modal(`<h2>Customer expectation</h2><p class="sub">Write the custom requirements this customer has asked for.</p>
+    <label>Custom requirements <b>*</b></label><textarea id="exTxt" style="min-height:120px">${esc(l.expectations||"")}</textarea>
+    <div class="btnrow"><button class="btn" onclick="closeModal();renderLead()">Cancel</button><button class="btn btn-rose" onclick="saveExpect('${id}')">Save</button></div>`);return;}
+  if(val==="FOLLOW UP SCHEDULED"){fuModal(id,val);return;}
+  if(await leadUpdate(id,{sub_status:val},"Status changed to "+cap(val)))toast("Status updated");}
+async function saveExpect(id){const v=$("exTxt").value.trim();if(!v)return toast("Write the requirements");
+  closeModal();await leadUpdate(id,{sub_status:"CUSTOMER EXPECTATION",expectations:v},"Customer expectation: "+v,"NOTE");}
+async function assignLead(id,uid){if(await leadUpdate(id,{assigned_to:uid||null},"Assigned to "+pname(uid)))toast("Lead assigned to "+pname(uid));}
+async function reopenLead(id){if(!confirm("Reopen this lead and move it back to Active?"))return;const l=leadById(id);
+  await leadUpdate(id,{status:"ACTIVE",sub_status:"FOLLOW UP SCHEDULED",lost_reason:null,lost_note:null,lost_at:null,next_followup:autoNextFromEvents(l.lead_events||[])},"Lead reopened");}
+async function deleteLead(id){const l=leadById(id);if(!confirm("Delete "+l.lead_no+" ("+l.customer_name+") with all its history and files? This cannot be undone."))return;
+  const {data:at}=await sb.from("attachments").select("path").eq("lead_id",id);
+  if(at&&at.length)await sb.storage.from(BUCKET).remove(at.map(a=>a.path));
+  const {error}=await sb.from("leads").delete().eq("id",id);if(error)return toast(error.message);
+  await loadData();toast("Lead deleted");goBack();}
+
+/* ---------- follow-up ---------- */
+function fuModal(id,forceSub){const l=leadById(id);if(!l)return;
+  const next=autoNextFromEvents(l.lead_events||[]),d=nearestEvent(l),left=d?diff(T(),d):null;
+  const sub=forceSub||(["NEW ENQUIRY","CONTACTED"].includes(l.sub_status)?"FOLLOW UP SCHEDULED":l.sub_status);
+  modal(`<h2>Log follow-up</h2><p class="sub">${esc(l.customer_name)} · ${esc(l.lead_no)} · ${left==null?"event date not final":left+" days to event"}</p>
+    <div class="g2"><div><label>Type</label><select id="fuKind">${opts(["CALL","WHATSAPP","VISIT","NOTE"],"CALL")}</select></div>
+    <div><label>Sub status after this</label><select id="fuSub">${opts(SUBS,sub)}</select></div></div>
+    <label>What did the customer say?</label><textarea id="fuNote" placeholder="Short note of the conversation"></textarea>
+    <label>Next follow-up call</label><input type="date" id="fuNext" value="${next}" min="${T()}">
+    <div class="sub" style="margin-top:6px">Auto rule: ${left==null?"date not final, call every 7 days":left>60?"more than 60 days left, call every 7 days":left>=30?"30 to 60 days left, call every 3 days":left>=15?"15 to 30 days left, call every 2 days":"less than 15 days left, call daily"}.</div>
+    <label>Call recording or WhatsApp chat screenshots</label><input type="file" id="fuFiles" accept="audio/*,image/*,video/mp4,.amr,.m4a,.mp3,.aac,.ogg,.wav" multiple>
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-rose" onclick="saveFu('${id}')">Save follow-up</button></div>`);}
+async function saveFu(id){
+  const note=$("fuNote").value.trim(),sub=$("fuSub").value,next=$("fuNext").value,kind=$("fuKind").value,files=[...$("fuFiles").files];
+  if(!note&&!files.length)return toast("Write a short note or attach a file");
+  if(!next)return toast("Set the next follow-up date");
+  if(lock())return;
+  try{
+    const {data:fu,error}=await sb.from("followups").insert({lead_id:id,kind,note:note||null,sub_status:sub,next_followup:next,by_name:me.name}).select().single();
+    if(error)throw error;
+    if(files.length){toast("Uploading");await uploadFiles(id,files,null,fu.id);}
+    const l=leadById(id);const patch={sub_status:sub,next_followup:next,last_contact_at:new Date().toISOString()};
+    if(sub==="CUSTOMER EXPECTATION"&&note)patch.expectations=(l.expectations?l.expectations+"\n":"")+note;
+    const r=await sb.from("leads").update(patch).eq("id",id);if(r.error)throw r.error;
+    closeModal();await refresh();toast("Follow-up saved. Next call "+fmtDs(next));
+  }catch(e){toast(e.message||"Could not save");}finally{unlock();}
+}
+let fuTab="today";
+function renderFollowups(){
+  $("hdrTitle").textContent="Follow-ups";
+  const b=fuBuckets();const due=[...b.missed,...b.overdue,...b.today];
+  const lists={today:b.today,overdue:b.overdue,missed:b.missed,upcoming:b.upcoming,all:due};
+  const list=lists[fuTab]||[];
+  app.innerHTML=`<div class="page">
+    <div class="tabs">${[["today","Today "+b.today.length],["overdue","Overdue "+b.overdue.length],["missed","Missed "+b.missed.length],["all","All due "+due.length],["upcoming","Upcoming "+b.upcoming.length]]
+      .map(([k,l])=>`<button class="tab ${fuTab===k?"on":""}" onclick="fuTab='${k}';renderFollowups()">${l}</button>`).join("")}</div>
+    <div class="sub" style="margin:0 2px 12px">${{today:"Leads to call today.",overdue:"Call was due 1 or 2 days ago.",missed:"Call was due 3 or more days ago. Call these first.",all:"Everything pending, oldest first.",upcoming:"Calls scheduled for the coming days."}[fuTab]}</div>
+    ${list.length?list.map(l=>leadCard(l,`<button class="btn btn-sm btn-rose" onclick="event.stopPropagation();fuModal('${l.id}')">Log call</button>`)).join(""):`<div class="empty">Nothing pending here.</div>`}
+  </div>`;
+}
+
+/* ---------- lost ---------- */
+function lostModal(id){const l=leadById(id);
+  modal(`<h2>Mark lead as lost</h2><p class="sub">${esc(l.customer_name)} · ${esc(l.lead_no)}</p>
+    <label>Reason <b>*</b></label><select id="lsReason">${opts(LOST_REASONS,"","Select reason")}</select>
+    <label>Note</label><textarea id="lsNote" placeholder="For example: booked another venue at lower price"></textarea>
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-red" onclick="saveLost('${id}')">Mark lost</button></div>`);}
+async function saveLost(id){const r=$("lsReason").value,n=$("lsNote").value.trim();if(!r)return toast("Select the reason");
+  if(r==="OTHER REASON"&&!n)return toast("Write the reason in the note");
+  closeModal();
+  if(await leadUpdate(id,{status:"LOST",lost_reason:r,lost_note:n||null,lost_at:new Date().toISOString(),next_followup:null},"Marked lost: "+cap(r)+(n?". "+n:"")))toast("Lead moved to Lost");}
+
+/* ================= CONVERT TO BOOKING / EDIT BOOKING ================= */
+let BF=null;
+function openConvert(id){const l=leadById(id);if(!l)return;
+  const evs=(l.lead_events||[]).map(e=>({event_type:e.event_type,event_date:e.event_date||"",session:e.session,hall:e.venue||"",guests:e.guests??"",menu:e.menu||""}));
+  const dates=evs.map(e=>e.event_date).filter(Boolean).sort();
+  const need=(l.lead_events||[]).reduce((s,e)=>Math.max(s,e.rooms||0),0);
+  BF={mode:"convert",lead:l,booking_date:T(),total:l.offered_price??"",notes:l.expectations||"",advance:"",adv_mode:"CASH",events:evs.length?evs:[{event_type:"",event_date:"",session:"DINNER",hall:"",guests:"",menu:""}],
+      ci:dates.length?addDays(dates[0],need?-1:0):"",co:dates.length?addDays(dates[dates.length-1],1):"",rooms:new Set(),need,autoPick:need>0};
+  renderBF();}
+function openEditBooking(id){const b=bkById(id);if(!b)return;
+  BF={mode:"edit",booking:b,booking_date:b.booking_date,total:b.total_amount,notes:b.custom_notes||"",
+      events:(b.booking_events||[]).filter(e=>e.active).map(e=>({id:e.id,event_type:e.event_type,event_date:e.event_date,session:e.session,hall:e.hall,guests:e.guests??"",menu:e.menu||""}))};
+  renderBF();}
+function bfRead(){if(!BF||!$("bfDate"))return;
+  BF.booking_date=$("bfDate").value;BF.total=$("bfTotal").value;BF.notes=$("bfNotes").value;
+  if(BF.mode==="convert"){BF.advance=$("bfAdv").value;BF.adv_mode=$("bfAdvMode").value;
+    if($("bfCi").value!==BF.ci||$("bfCo").value!==BF.co){BF.ci=$("bfCi").value;BF.co=$("bfCo").value;}}
+  BF.events.forEach((e,i)=>{e.event_type=$("be"+i+"type").value.trim().toUpperCase();e.event_date=$("be"+i+"date").value;e.session=$("be"+i+"ses").value;
+    e.hall=$("be"+i+"hall").value;e.guests=$("be"+i+"g").value;e.menu=$("be"+i+"menu").value;});}
+function bfRe(){if(reBusy)return;reBusy=true;try{settle();bfRead();renderBF();}finally{reBusy=false;}}
+function bfToggleRoom(n){settle();bfRead();BF.autoPick=false;if(BF.rooms.has(n))BF.rooms.delete(n);else BF.rooms.add(n);renderBF();}
+function bfClashes(){const exB=BF.mode==="edit"?BF.booking.id:null;const out=[];
+  BF.events.forEach((e,i)=>{if(e.event_date&&e.hall){if(hallClash(e.event_date,e.session,e.hall,exB).length)out.push(i);
+    BF.events.forEach((o,j)=>{if(j<i&&o.event_date===e.event_date&&(o.hall===e.hall||o.hall==="BOTH"||e.hall==="BOTH")&&(o.session===e.session||o.session==="FULL DAY"||e.session==="FULL DAY"))out.push(i);});}});
+  return out;}
+function renderBF(){
+  const f=BF,conv=f.mode==="convert",who=conv?f.lead:f.booking,exB=conv?null:f.booking.id;
+  let roomsHtml="";
+  if(conv){const okDates=f.ci&&f.co&&f.co>f.ci;const taken=okDates?roomsTaken(f.ci,f.co):{};
+    for(const n of [...f.rooms])if(taken[n])f.rooms.delete(n);
+    if(f.autoPick&&okDates){f.rooms=new Set();for(let n=1;n<=ROOMS&&f.rooms.size<f.need;n++)if(!taken[n])f.rooms.add(n);}
+    const free=ROOMS-Object.keys(taken).length;
+    roomsHtml=`<div class="sec">Suite rooms${f.need?` (customer asked for ${f.need})`:""}</div>
+      <div class="g2"><div><label>Check-in date</label><input type="date" id="bfCi" value="${esc(f.ci)}" onchange="bfRe()"></div>
+      <div><label>Check-out date</label><input type="date" id="bfCo" value="${esc(f.co)}" onchange="bfRe()"></div></div>
+      ${okDates?`<div class="sub" style="margin-top:8px">${free} of ${ROOMS} suites free for ${diff(f.ci,f.co)} night${diff(f.ci,f.co)>1?"s":""}. Tap to select. Selected: ${f.rooms.size}.</div>
+      <div class="rooms">${Array.from({length:ROOMS},(_,k)=>k+1).map(n=>taken[n]?`<div class="rm taken">${n}<small>${esc(taken[n].customer_name)}</small></div>`
+        :`<button class="rm ${f.rooms.has(n)?"sel":""}" onclick="bfToggleRoom(${n})">${n}<small>${f.rooms.has(n)?"Selected":"Free"}</small></button>`).join("")}</div>
+      ${f.need&&f.rooms.size<f.need?`<div class="hint h-amber">Customer asked for ${f.need} rooms, only ${f.rooms.size} selected.</div>`:""}`
+      :`<div class="sub" style="margin-top:8px">Set check-in and check-out to allocate rooms. Leave empty if no rooms are needed.</div>`}`;}
+  const clash=bfClashes();
+  modal(`<h2>${conv?"Convert to booking":"Edit booking"}</h2><p class="sub">${esc(who.customer_name)} · ${esc(conv?who.lead_no:who.booking_no)}. All fields marked * are mandatory.</p>
+    <div class="g2"><div><label>Booking date <b>*</b></label><input type="date" id="bfDate" value="${esc(f.booking_date)}"></div>
+    <div><label>Booking amount (₹) <b>*</b></label><input type="number" inputmode="numeric" id="bfTotal" value="${esc(f.total)}"></div></div>
+    <div class="sec">Events</div>
+    ${f.events.map((e,i)=>`<div class="evbox">
+      <div class="g2"><div><label>Event <b>*</b></label><input id="be${i}type" value="${esc(e.event_type)}" list="evTypes"></div>
+      <div><label>Event date <b>*</b></label><input type="date" id="be${i}date" value="${esc(e.event_date)}" onchange="bfRe()"></div></div>
+      <div class="g2"><div><label>Hall <b>*</b></label><select id="be${i}hall" onchange="bfRe()">${opts([["KING","King Hall"],["QUEEN","Queen Hall"],["BOTH","Both halls"]],e.hall,"Select hall")}</select></div>
+      <div><label>Lunch / Dinner <b>*</b></label><select id="be${i}ses" onchange="bfRe()">${opts(SESSIONS,e.session)}</select></div></div>
+      <div class="g2"><div><label>Guests</label><input type="number" inputmode="numeric" id="be${i}g" value="${esc(e.guests)}"></div>
+      <div><label>Menu <b>*</b></label><select id="be${i}menu">${opts(MENUS,e.menu,"Select menu")}</select></div></div>
+      ${clash.includes(i)&&!hallClash(e.event_date,e.session,e.hall,exB).length?`<div class="hint h-red">${icn("alert",15)} Same hall and time is used twice in this booking</div>`:availHint(e,exB,conv?f.lead.id:f.booking.lead_id)}
+      ${f.events.length>1?`<div class="btnrow"><button class="btn btn-sm" onclick="settle();bfRead();BF.events.splice(${i},1);renderBF()">Remove this event</button></div>`:""}
+    </div>`).join("")}
+    <datalist id="evTypes">${EVENT_TYPES.filter(t=>t!=="OTHERS").map(t=>`<option value="${t}">`).join("")}</datalist>
+    <button class="btn btn-sm" onclick="settle();bfRead();BF.events.push({event_type:'',event_date:'',session:'DINNER',hall:'',guests:'',menu:''});renderBF()">${icn("plus",14)} Add event</button>
+    ${roomsHtml}
+    <label>Anything custom (decoration, DJ, special requests)</label><textarea id="bfNotes">${esc(f.notes)}</textarea>
+    ${conv?`<div class="sec">Advance received now (optional)</div>
+      <div class="g2"><input type="number" inputmode="numeric" id="bfAdv" placeholder="Amount ₹" value="${esc(f.advance)}"><select id="bfAdvMode">${opts(PAY_MODES,f.adv_mode)}</select></div>`:""}
+    ${clash.length?`<div class="hint h-red" style="margin-top:14px">${icn("alert",15)} Hall is already booked. Change the date, hall or session before saving.</div>`:""}
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveBF()">${conv?"Confirm booking":"Save changes"}</button></div>`);
+}
+async function saveBF(){
+  settle();bfRead();const f=BF;
+  if(!f.booking_date)return toast("Booking date is mandatory");
+  const total=num(f.total);if(total==null||total<0)return toast("Booking amount is mandatory");
+  if(!f.events.length)return toast("Add at least one event");
+  for(const [i,e] of f.events.entries()){const n=f.events.length>1?" (event "+(i+1)+")":"";
+    if(!e.event_type)return toast("Event name is mandatory"+n);if(!e.event_date)return toast("Event date is mandatory"+n);
+    if(!e.hall)return toast("Select the hall"+n);if(!e.menu)return toast("Select the menu"+n);}
+  if(bfClashes().length)return toast("Hall already booked. Change date, hall or session.");
+  if(lock())return;
+  try{
+    if(f.mode==="convert"){
+      if(f.rooms.size&&!(f.ci&&f.co&&f.co>f.ci))throw new Error("Check-out must be after check-in");
+      const payload={lead_id:f.lead.id,booking_date:f.booking_date,total_amount:String(total),custom_notes:f.notes.trim(),advance:String(num(f.advance)||""),advance_mode:f.adv_mode,
+        events:f.events.map(e=>({event_type:e.event_type,event_date:e.event_date,session:e.session,hall:e.hall,guests:String(num(e.guests)??""),menu:e.menu})),
+        rooms:[...f.rooms].sort((a,b)=>a-b).map(n=>({room_no:n,check_in:f.ci,check_out:f.co}))};
+      const {data,error}=await sb.rpc("convert_lead",{p:payload});if(error)throw error;
+      $("modalHost").innerHTML="";BF=null;await loadData();
+      history.replaceState({t:"view",v:"booking",arg:data},"","#booking");view="booking";viewArg=data;renderView();
+      confirmedModal(data);
+    }else{
+      const b=f.booking;
+      let r=await sb.from("bookings").update({booking_date:f.booking_date,total_amount:total,custom_notes:f.notes.trim()||null}).eq("id",b.id);if(r.error)throw r.error;
+      const keep=f.events.filter(e=>e.id).map(e=>e.id);
+      for(const old of (b.booking_events||[]).filter(e=>e.active&&!keep.includes(e.id))){r=await sb.from("booking_events").delete().eq("id",old.id);if(r.error)throw r.error;}
+      for(const [i,e] of f.events.entries()){const row={event_type:e.event_type,event_date:e.event_date,session:e.session,hall:e.hall,guests:num(e.guests),menu:e.menu,sort:i};
+        r=e.id?await sb.from("booking_events").update(row).eq("id",e.id):await sb.from("booking_events").insert({...row,booking_id:b.id});if(r.error)throw r.error;}
+      closeModal();BF=null;await refresh();toast("Booking updated");
+    }
+  }catch(e){toast(e.message||"Could not save");await loadData();if(BF)renderBF();}
+  finally{unlock();}
+}
+
+/* ================= BOOKINGS ================= */
+let bkTab="LIVE";
+const BKC={"AWAITING ADVANCE":"ch-amber","ADVANCE RECEIVED":"ch-blue","PART PAYMENT RECEIVED":"ch-purple","FULL PAID":"ch-green","EVENT COMPLETED":"ch-gray","CANCELLED":"ch-red"};
+const bkFirstDate=b=>((b.booking_events||[]).map(e=>e.event_date).sort()[0])||"9999";
+function renderBookings(){
+  $("hdrTitle").textContent="Bookings";
+  const cnt=s=>bookings.filter(b=>b.status===s).length;
+  const live=bookings.filter(b=>!["EVENT COMPLETED","CANCELLED"].includes(b.status));
+  let list=bkTab==="LIVE"?live:bookings.filter(b=>b.status===bkTab);
+  list=[...list].sort((a,c)=>bkFirstDate(a)<bkFirstDate(c)?-1:1);
+  if(["EVENT COMPLETED","CANCELLED"].includes(bkTab))list.reverse();
+  app.innerHTML=`<div class="page">
+    <div class="tabs">${[["LIVE","All upcoming "+live.length],...BK_STATUS.map(s=>[s,cap(s)+" "+cnt(s)]),["CANCELLED","Cancelled "+cnt("CANCELLED")]]
+      .map(([k,l])=>`<button class="tab ${bkTab===k?"on":""}" onclick="bkTab='${k}';renderBookings()">${l}</button>`).join("")}</div>
+    ${list.length?list.map(b=>`<div class="card glass click" onclick="nav('booking','${b.id}')">
+      <div class="row"><span class="title">${esc(b.customer_name)}</span><div class="sp"></div><span class="chip ${BKC[b.status]}">${b.status}</span></div>
+      <div class="meta">${esc(b.booking_no)} · ${esc(b.mobile)}</div>
+      ${(b.booking_events||[]).map(e=>`<div class="meta">${evLine(e)}</div>`).join("")}
+      <div class="row" style="margin-top:9px;font-size:12.5px"><span>Total <b>${inr(b.total_amount)}</b></span><div class="sp"></div><span>Paid <b style="color:var(--green)">${inr(b.paid_amount)}</b></span><div class="sp"></div>
+        <span>Balance <b style="color:${b.total_amount-b.paid_amount>0?"var(--red)":"var(--green)"}">${inr(Math.max(b.total_amount-b.paid_amount,0))}</b></span></div>
+    </div>`).join(""):`<div class="empty">No bookings here.</div>`}
+  </div>`;
+}
+function bookingText(b){
+  const rooms=(b.room_allocations||[]).filter(r=>r.active);
+  return `*${(BIZ.name||"ROSELLIA").toUpperCase()}* ${BIZ.tagline||"Banquets & Suites"}\n*Booking Confirmed* ✅\n\nRef: ${b.booking_no}\nName: ${b.customer_name}\n\n`
+    +(b.booking_events||[]).filter(e=>e.active).map(e=>`• *${cap(e.event_type)}*: ${fmtD(e.event_date)}, ${cap(e.session)}, ${HALLS[e.hall].name}${e.guests?", "+e.guests+" guests":""}${e.menu?", "+cap(e.menu)+" menu":""}`).join("\n")
+    +(rooms.length?`\n• *Suite rooms*: ${rooms.length} room${rooms.length>1?"s":""} (${[...new Set(rooms.map(r=>fmtDs(r.check_in)+" to "+fmtDs(r.check_out)))].join(", ")})`:"")
+    +(b.custom_notes?`\n• Special: ${b.custom_notes}`:"")
+    +`\n\nBooking amount: ${inr(b.total_amount)}\nReceived: ${inr(b.paid_amount)}\n*Balance: ${inr(Math.max(b.total_amount-b.paid_amount,0))}*\n\nThank you for choosing ${cap(BIZ.name||"Rosellia")}.${BIZ.phone?"\nContact: "+BIZ.phone:""}`;}
+function confirmedModal(id){const b=bkById(id);if(!b)return;
+  modal(`<h2>Booking confirmed</h2><div class="chip ch-green" style="font-size:13px;padding:7px 13px">${esc(b.booking_no)}</div>
+    <p class="sub" style="margin-top:12px">Send the confirmation to ${esc(b.customer_name)} on WhatsApp.</p>
+    <div class="btnrow"><a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
+      <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} Send PDF</button></div>
+    <div class="btnrow"><button class="btn btn-block" onclick="closeModal()">Done</button></div>`);}
+function renderBooking(){
+  const b=bkById(viewArg);if(!b){app.innerHTML=`<div class="empty">Booking not found.</div>`;return;}
+  $("hdrTitle").textContent=b.booking_no;
+  const bal=Math.max(b.total_amount-b.paid_amount,0),canEdit=hasPower("bookings")&&b.status!=="CANCELLED",canPay=hasPower("payments")&&b.status!=="CANCELLED";
+  const rooms=(b.room_allocations||[]).filter(r=>r.active),pays=b.payments||[];
+  app.innerHTML=`<div class="page">
+    <div class="card glass">
+      <div class="row"><h2 style="font-size:27px">${esc(b.customer_name)}</h2><div class="sp"></div><span class="chip ${BKC[b.status]}">${b.status}</span></div>
+      <div class="meta">${esc(b.booking_no)} · booked on ${fmtD(b.booking_date)}</div>
+      <div class="btnrow"><a class="btn" href="tel:+91${m10(b.mobile)}">${icn("phone",16)} ${esc(b.mobile)}</a>
+        <a class="btn btn-green" target="_blank" rel="noopener" href="${waLink(b.mobile,bookingText(b))}">${icn("chat",16)} WhatsApp details</a>
+        <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} PDF</button></div>
+      <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
+        <div class="stat glass"><b>${inr(b.total_amount)}</b><span>Booking amount</span></div>
+        <div class="stat glass"><b style="color:var(--green)">${inr(b.paid_amount)}</b><span>Received</span></div>
+        <div class="stat glass"><b style="color:${bal>0?"var(--red)":"var(--green)"}">${inr(bal)}</b><span>Balance</span></div></div>
+      ${canEdit?`<label>Booking status</label><select onchange="setBkStatus('${b.id}',this.value)">${opts(BK_STATUS,b.status)}</select>
+        <div class="sub" style="margin-top:6px">Status moves on its own when you record payments. Change it by hand only if needed.</div>`:""}
+      ${b.status==="CANCELLED"&&b.cancel_reason?`<div class="hint h-red">Cancelled: ${esc(b.cancel_reason)}</div>`:""}
+    </div>
+    <div class="sec">Events</div>
+    ${(b.booking_events||[]).map(e=>`<div class="card glass"><div class="meta" style="margin:0">${evLine(e)}</div></div>`).join("")}
+    ${b.custom_notes?`<div class="card glass"><div class="sub">Custom requirements</div><div style="white-space:pre-wrap;margin-top:4px">${esc(b.custom_notes)}</div></div>`:""}
+    <div class="sec">Suite rooms (${rooms.length})</div>
+    ${rooms.length?rooms.map(r=>`<div class="card glass"><div class="row"><span class="title">Suite ${r.room_no}</span><div class="sp"></div>
+      <span class="sub">${fmtDs(r.check_in)} to ${fmtDs(r.check_out)} · ${diff(r.check_in,r.check_out)} night${diff(r.check_in,r.check_out)>1?"s":""}</span>
+      ${canEdit?`<button class="btn btn-sm" onclick="releaseRoom('${r.id}')">Release</button>`:""}</div>${r.guest_name?`<div class="meta">Guest: ${esc(r.guest_name)}</div>`:""}</div>`).join(""):`<div class="sub" style="margin:0 2px 10px">No rooms allocated.</div>`}
+    ${canEdit?`<button class="btn btn-sm" onclick="roomModal('${b.id}')">${icn("bed",15)} Allocate rooms</button>`:""}
+    <div class="sec">Payments</div>
+    ${pays.length?pays.map(p=>`<div class="card glass"><div class="row"><span class="title">${inr(p.amount)}</span><span class="chip ch-gray">${esc(p.mode)}</span><div class="sp"></div>
+      <span class="sub">${fmtD(p.paid_on)}</span>${isAdmin()?`<button class="btn btn-sm" style="color:var(--red)" onclick="delPayment('${p.id}')">Delete</button>`:""}</div>
+      <div class="meta">${esc(p.note||"")}${p.by_name?" · entered by "+esc(p.by_name):""}</div></div>`).join(""):`<div class="sub" style="margin:0 2px 10px">No payment received yet.</div>`}
+    <div class="btnrow">
+      ${canPay?`<button class="btn btn-green" onclick="payModal('${b.id}')">${icn("plus",16)} Record payment</button>`:""}
+      ${canEdit?`<button class="btn" onclick="openEditBooking('${b.id}')">Edit booking</button>`:""}</div>
+    <div class="btnrow">
+      ${canEdit&&b.status!=="EVENT COMPLETED"?`<button class="btn btn-gold" onclick="setBkStatus('${b.id}','EVENT COMPLETED')">${icn("check",16)} Mark event completed</button>`:""}
+      ${b.lead_id&&leadById(b.lead_id)?`<button class="btn" onclick="nav('lead','${b.lead_id}')">Lead history</button>`:""}
+      ${isAdmin()&&b.status!=="CANCELLED"?`<button class="btn" style="color:var(--red)" onclick="cancelBooking('${b.id}')">Cancel booking</button>`:""}</div>
+  </div>`;
+}
+async function setBkStatus(id,s){const b=bkById(id);if(s===b.status)return;
+  if(s==="EVENT COMPLETED"&&b.total_amount-b.paid_amount>0&&!confirm("Balance of "+inr(b.total_amount-b.paid_amount)+" is still pending. Mark event completed anyway?"))return renderBooking();
+  const {error}=await sb.from("bookings").update({status:s}).eq("id",id);if(error)toast(error.message);else toast("Status: "+cap(s));await refresh();}
+async function cancelBooking(id){const b=bkById(id);const why=prompt("Cancel booking "+b.booking_no+"? The hall and rooms will become free again.\n\nWrite the reason:");
+  if(why==null)return;if(!why.trim())return toast("Reason is needed to cancel");
+  const {error}=await sb.from("bookings").update({status:"CANCELLED",cancel_reason:why.trim()}).eq("id",id);if(error)toast(error.message);else toast("Booking cancelled");await refresh();}
+function payModal(id){const b=bkById(id),bal=Math.max(b.total_amount-b.paid_amount,0);
+  modal(`<h2>Record payment</h2><p class="sub">${esc(b.customer_name)} · balance ${inr(bal)}</p>
+    <div class="g2"><div><label>Amount (₹) <b>*</b></label><input type="number" inputmode="numeric" id="pyAmt"></div>
+    <div><label>Mode</label><select id="pyMode">${opts(PAY_MODES,"CASH")}</select></div></div>
+    <div class="g2"><div><label>Date</label><input type="date" id="pyDate" value="${T()}" max="${T()}"></div>
+    <div><label>Note</label><input id="pyNote" placeholder="UPI ref, cheque no."></div></div>
+    <div class="btnrow"><button class="btn" onclick="$('pyAmt').value=${bal}">Full balance</button><button class="btn btn-green" onclick="savePay('${id}')">Save payment</button></div>`);}
+async function savePay(id){const amt=num($("pyAmt").value);if(!amt||amt<=0)return toast("Enter the amount");
+  const b=bkById(id);if(amt>b.total_amount-b.paid_amount+0.5&&!confirm("This is more than the balance. Save anyway?"))return;
+  if(lock())return;
+  try{const {error}=await sb.from("payments").insert({booking_id:id,amount:amt,mode:$("pyMode").value,paid_on:$("pyDate").value||T(),note:$("pyNote").value.trim()||null,by_name:me.name});
+    if(error)throw error;closeModal();await refresh();toast("Payment of "+inr(amt)+" saved");}
+  catch(e){toast(e.message);}finally{unlock();}}
+async function delPayment(pid){if(!confirm("Delete this payment entry?"))return;const {error}=await sb.from("payments").delete().eq("id",pid);if(error)toast(error.message);await refresh();}
+let RM=null;
+function roomModal(id){const b=bkById(id);const ds=(b.booking_events||[]).filter(e=>e.active).map(e=>e.event_date).sort();
+  RM={id,ci:ds[0]||T(),co:ds.length?addDays(ds[ds.length-1],1):addDays(T(),1),sel:new Set(),guest:""};renderRM();}
+function rmRead(){settle();if(!$("rmCi"))return;RM.ci=$("rmCi").value;RM.co=$("rmCo").value;RM.guest=$("rmGuest").value;}
+function renderRM(){const ok=RM.ci&&RM.co&&RM.co>RM.ci,taken=ok?roomsTaken(RM.ci,RM.co):{};for(const n of [...RM.sel])if(taken[n])RM.sel.delete(n);
+  modal(`<h2>Allocate suite rooms</h2>
+    <div class="g2"><div><label>Check-in</label><input type="date" id="rmCi" value="${RM.ci}" onchange="rmRead();renderRM()"></div>
+    <div><label>Check-out</label><input type="date" id="rmCo" value="${RM.co}" onchange="rmRead();renderRM()"></div></div>
+    ${ok?`<div class="rooms" style="margin-top:12px">${Array.from({length:ROOMS},(_,k)=>k+1).map(n=>taken[n]?`<div class="rm taken">${n}<small>${esc(taken[n].customer_name)}</small></div>`
+      :`<button class="rm ${RM.sel.has(n)?"sel":""}" onclick="rmRead();RM.sel.has(${n})?RM.sel.delete(${n}):RM.sel.add(${n});renderRM()">${n}<small>${RM.sel.has(n)?"Selected":"Free"}</small></button>`).join("")}</div>`
+      :`<div class="hint h-amber">Check-out must be after check-in.</div>`}
+    <label>Guest name (optional)</label><input id="rmGuest" value="${esc(RM.guest)}">
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-green" onclick="saveRM()">Allocate ${RM.sel.size||""} room${RM.sel.size===1?"":"s"}</button></div>`);}
+async function saveRM(){rmRead();if(!RM.sel.size)return toast("Select at least one free room");if(lock())return;
+  try{for(const n of [...RM.sel].sort((a,b)=>a-b)){const {error}=await sb.rpc("allocate_room",{p_booking:RM.id,p_room:n,p_in:RM.ci,p_out:RM.co,p_guest:RM.guest.trim()});if(error)throw error;}
+    closeModal();await refresh();toast("Rooms allocated");}
+  catch(e){toast(e.message);await loadData();renderRM();}finally{unlock();}}
+async function releaseRoom(rid){if(!confirm("Release this room from the booking?"))return;
+  const {error}=await sb.from("room_allocations").update({active:false}).eq("id",rid);if(error)toast(error.message);await refresh();}
+
+/* ================= QUOTATION + PDF ================= */
+function quoteModal(id){const l=leadById(id);
+  modal(`<h2>Quotation</h2><p class="sub">${esc(l.customer_name)} · Quotation no. ${esc(l.lead_no)}. The same number continues on the booking.</p>
+    <div class="g2"><div><label>Offered price (₹) <b>*</b></label><input type="number" inputmode="numeric" id="qtPrice" value="${esc(l.offered_price??"")}"></div>
+    <div><label>Valid for (days)</label><input type="number" inputmode="numeric" id="qtValid" value="7"></div></div>
+    <label>Note on quotation</label><textarea id="qtNote" placeholder="What is included: decoration, DJ, rooms"></textarea>
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-gold" onclick="sendQuote('${id}')">${icn("file",16)} Create and send PDF</button></div>`);}
+async function sendQuote(id){const price=num($("qtPrice").value);if(price==null)return toast("Enter the offered price");
+  const valid=num($("qtValid").value)||7,note=$("qtNote").value.trim(),l=leadById(id);
+  const ok=await sharePDF("QUOTE",id,{price,valid,note});
+  if(!ok)return;
+  closeModal();
+  await sb.from("followups").insert({lead_id:id,kind:"QUOTE",note:"Quotation sent: "+inr(price)+(note?". "+note:""),sub_status:"QUOTATION SENT",by_name:me.name});
+  await sb.from("leads").update({offered_price:price,sub_status:["NEW ENQUIRY","CONTACTED","FOLLOW UP SCHEDULED","HALL VISIT DONE"].includes(l.sub_status)?"QUOTATION SENT":l.sub_status}).eq("id",id);
+  await refresh();}
+const rs=n=>"Rs. "+Number(n||0).toLocaleString("en-IN",{maximumFractionDigits:0});
+const ascii=s=>String(s??"").replace(/₹/g,"Rs. ").replace(/[^\x20-\x7E\n]/g,"");
+function buildPDF(kind,o,x){
+  const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});const W=210,M=14;
+  doc.setFillColor(110,32,58);doc.rect(0,0,W,36,"F");doc.setFillColor(200,160,95);doc.rect(0,36,W,1.2,"F");
+  doc.setTextColor(255,255,255);doc.setFont("times","bold");doc.setFontSize(28);doc.text(ascii((BIZ.name||"ROSELLIA").toUpperCase()),M,19,{charSpace:1.6});
+  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.setTextColor(236,208,160);doc.text(ascii(BIZ.tagline||"Banquets & Suites"),M,26.5);
+  doc.setTextColor(255,255,255);doc.setFontSize(8.5);
+  const head=[...ascii(BIZ.address||"").split("\n").filter(Boolean),BIZ.phone?"Phone: "+ascii(BIZ.phone):"",BIZ.gstin?"GSTIN: "+ascii(BIZ.gstin):""].filter(Boolean).slice(0,5);
+  head.forEach((t,i)=>doc.text(t,W-M,11+i*4.6,{align:"right"}));
+  let y=48;doc.setTextColor(110,32,58);doc.setFont("times","bold");doc.setFontSize(17);
+  doc.text(kind==="QUOTE"?"QUOTATION":"BOOKING CONFIRMATION",M,y);
+  doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(60,60,60);
+  doc.text((kind==="QUOTE"?"Quotation No: ":"Booking Ref: ")+(o.lead_no||o.booking_no),W-M,y-4,{align:"right"});
+  doc.text("Date: "+fmtD(kind==="QUOTE"?T():o.booking_date),W-M,y+1,{align:"right"});
+  y+=9;doc.setDrawColor(220,205,190);doc.line(M,y,W-M,y);y+=7;
+  doc.setFontSize(9);doc.setTextColor(120,120,120);doc.text("CUSTOMER",M,y);y+=5.5;
+  doc.setFontSize(12.5);doc.setTextColor(30,30,30);doc.setFont("helvetica","bold");doc.text(ascii(o.customer_name)||"Customer",M,y);
+  doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text("Mobile: "+o.mobile+(o.alt_mobile?" / "+o.alt_mobile:""),M,y+5.5);y+=12;
+  const hs={fillColor:[110,32,58],textColor:255,fontStyle:"bold",fontSize:9},st={fontSize:9.5,cellPadding:2.6,lineColor:[225,212,200],lineWidth:0.2};
+  const evs=kind==="QUOTE"?(o.lead_events||[]):(o.booking_events||[]).filter(e=>e.active);
+  doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",headStyles:hs,styles:st,
+    head:[["Event","Date","Session","Hall","Guests","Menu"]],
+    body:evs.map(e=>[ascii(cap(e.event_type)),fmtD(e.event_date),cap(e.session),(e.venue||e.hall)?HALLS[e.venue||e.hall].name:"To be decided",e.guests||"-",e.menu?cap(e.menu):"To be decided"])});
+  y=doc.lastAutoTable.finalY+6;
+  if(kind==="BOOKING"){const rooms=(o.room_allocations||[]).filter(r=>r.active);
+    if(rooms.length){doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",headStyles:hs,styles:st,head:[["Suite room","Check-in","Check-out","Nights"]],
+      body:rooms.map(r=>["Suite "+r.room_no,fmtD(r.check_in),fmtD(r.check_out),diff(r.check_in,r.check_out)])});y=doc.lastAutoTable.finalY+6;}
+  }else{const rr=evs.reduce((s,e)=>Math.max(s,e.rooms||0),0);if(rr){doc.setFontSize(10);doc.setTextColor(40,40,40);doc.text("Suite rooms requested: "+rr,M,y+1);y+=8;}}
+  const amt=kind==="QUOTE"?[["Offered price",rs(x.price)]]:[["Booking amount",rs(o.total_amount)],["Amount received",rs(o.paid_amount)],["Balance payable",rs(Math.max(o.total_amount-o.paid_amount,0))]];
+  doc.autoTable({startY:y,margin:{left:W-M-86,right:M},theme:"grid",styles:{...st,fontSize:10.5},body:amt,
+    columnStyles:{0:{cellWidth:46},1:{halign:"right",fontStyle:"bold"}},
+    didParseCell:d=>{if(d.row.index===amt.length-1){d.cell.styles.fillColor=[246,236,224];d.cell.styles.textColor=[110,32,58];d.cell.styles.fontStyle="bold";}}});
+  y=doc.lastAutoTable.finalY+8;
+  const para=(title,text)=>{if(!text)return;const lines=doc.splitTextToSize(ascii(text),W-2*M);
+    if(y+8+lines.length*4.6>280){doc.addPage();y=20;}
+    doc.setFont("helvetica","bold");doc.setFontSize(9.5);doc.setTextColor(110,32,58);doc.text(title,M,y);y+=5;
+    doc.setFont("helvetica","normal");doc.setFontSize(9.2);doc.setTextColor(60,60,60);doc.text(lines,M,y);y+=lines.length*4.6+5;};
+  if(kind==="BOOKING"){const pays=o.payments||[];
+    if(pays.length)para("PAYMENTS RECEIVED",pays.map(p=>fmtD(p.paid_on)+"   "+rs(p.amount)+"   "+p.mode+(p.note?"   "+p.note:"")).join("\n"));
+    para("SPECIAL REQUIREMENTS",o.custom_notes);
+  }else{para("INCLUDED / NOTES",x.note);para("VALIDITY","This quotation is valid for "+x.valid+" days from the date above. The date is held only after advance payment.");}
+  para("TERMS AND CONDITIONS",BIZ.terms);
+  if(y>262){doc.addPage();y=20;}
+  y=Math.max(y+10,258);doc.setDrawColor(150,150,150);doc.line(M,y,M+55,y);doc.line(W-M-55,y,W-M,y);
+  doc.setFontSize(8.5);doc.setTextColor(110,110,110);doc.text("Customer signature",M,y+4.5);doc.text("For "+ascii(cap(BIZ.name||"Rosellia")),W-M,y+4.5,{align:"right"});
+  doc.setFontSize(8);doc.text("Thank you for choosing "+ascii(cap(BIZ.name||"Rosellia"))+".",W/2,290,{align:"center"});
+  return doc.output("blob");
+}
+async function sharePDF(kind,id,x){
+  if(!window.jspdf){toast("PDF tool is still loading. Check internet and try again.");return false;}
+  const o=kind==="QUOTE"?leadById(id):bkById(id);if(!o)return false;
+  let blob;try{blob=buildPDF(kind,o,x||{});}catch(e){toast("PDF error: "+e.message);return false;}
+  const ref=o.lead_no||o.booking_no,fname=`Rosellia-${kind==="QUOTE"?"Quotation":"Booking"}-${ref}.pdf`;
+  const file=new File([blob],fname,{type:"application/pdf"});
+  const text=kind==="QUOTE"?`Namaste ${o.customer_name} ji,\nPlease find the quotation ${ref} from ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}.\nOffered price: ${inr(x.price)}\nValid for ${x.valid} days.`:bookingText(o);
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file],title:fname,text});return true;}catch(e){if(e.name==="AbortError")return false;}}
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();a.remove();
+  toast("PDF downloaded. WhatsApp is opening: attach the PDF there.");
+  setTimeout(()=>window.open(waLink(o.mobile,text),"_blank"),700);
+  return true;
+}
+
+/* ================= HALL CALENDAR ================= */
+let calY=new Date().getFullYear(),calM=new Date().getMonth();
+function calMove(n){calM+=n;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderView(true);}
+function calHead(){return `<div class="calhead"><button class="btn btn-sm" onclick="calMove(-1)">${icn("back",15)}</button>
+  <h2>${new Date(calY,calM,1).toLocaleDateString("en-IN",{month:"long",year:"numeric"})}</h2>
+  <button class="btn btn-sm" style="transform:scaleX(-1)" onclick="calMove(1)">${icn("back",15)}</button></div>`;}
+function dayBooked(date){const m={KL:null,KD:null,QL:null,QD:null};
+  for(const b of bookings){if(b.status==="CANCELLED")continue;for(const e of b.booking_events||[]){if(!e.active||e.event_date!==date)continue;
+    for(const h of e.hall==="BOTH"?["K","Q"]:[e.hall[0]])for(const s of e.session==="FULL DAY"?["L","D"]:[e.session[0]])m[h+s]={b,e};}}
+  return m;}
+function renderCalendar(){
+  $("hdrTitle").textContent="Hall Calendar";
+  const first=new Date(calY,calM,1),n=new Date(calY,calM+1,0).getDate(),t=T();
+  let cells="";for(let i=0;i<first.getDay();i++)cells+="<div></div>";
+  for(let d=1;d<=n;d++){const date=calY+"-"+p2(calM+1)+"-"+p2(d),m=dayBooked(date),q=enquiriesOn(date).length;
+    cells+=`<div class="day ${date===t?"today":""} ${date<t?"past":""}" onclick="dayModal('${date}')"><span class="dn">${d}</span>
+      <div class="dots"><i class="${m.KL?"k":""}"></i><i class="${m.KD?"k":""}"></i><i class="${m.QL?"q":""}"></i><i class="${m.QD?"q":""}"></i></div>
+      ${q?`<span class="enq">${q} enq</span>`:""}</div>`;}
+  app.innerHTML=`<div class="page">${calHead()}
+    <div class="tabs"><button class="tab on">Halls</button><button class="tab" onclick="history.replaceState({t:'view',v:'rooms'},'','#rooms');view='rooms';renderView(true)">Suite rooms</button></div>
+    <div class="cal">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(x=>`<div class="dow">${x}</div>`).join("")}${cells}</div>
+    <div class="legend"><span><i style="background:#d0577a"></i>King Hall booked</span><span><i style="background:#d8a646"></i>Queen Hall booked</span>
+      <span><i style="background:var(--line)"></i>Free</span><span>Left box lunch, right box dinner</span><span style="color:var(--blue)">enq = open enquiries</span></div>
+    <div class="sub" style="margin-top:6px">Tap any date to see who has booked and what is free.</div></div>`;
+}
+function dayModal(date){const m=dayBooked(date),q=enquiriesOn(date),taken=roomsTaken(date,addDays(date,1));
+  const slot=(k,label)=>m[k]?`<div class="card glass click" onclick="closeModal();setTimeout(()=>nav('booking','${m[k].b.id}'),60)"><div class="row"><span class="title">${label}</span><div class="sp"></div><span class="chip ch-red">BOOKED</span></div>
+      <div class="meta">${esc(cap(m[k].e.event_type))} · ${esc(m[k].b.customer_name)} · ${esc(m[k].b.booking_no)}</div></div>`
+    :`<div class="card glass"><div class="row"><span class="title">${label}</span><div class="sp"></div><span class="chip ch-green">FREE</span></div></div>`;
+  modal(`<h2>${pd(date).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}</h2>
+    <div class="sec">King Hall (350)</div>${slot("KL","Lunch")}${slot("KD","Dinner")}
+    <div class="sec">Queen Hall (100)</div>${slot("QL","Lunch")}${slot("QD","Dinner")}
+    <div class="sec">Suite rooms for this night</div><div class="card glass"><b>${ROOMS-Object.keys(taken).length} of ${ROOMS} free</b>${Object.keys(taken).length?`<div class="meta">Occupied: ${Object.entries(taken).map(([n,b])=>"Suite "+n+" ("+esc(b.customer_name)+")").join(", ")}</div>`:""}</div>
+    ${q.length?`<div class="sec">Open enquiries for this date (${q.length})</div>`+q.map(l=>`<div class="card glass click" onclick="closeModal();setTimeout(()=>nav('lead','${l.id}'),60)"><div class="row"><span class="title">${esc(l.customer_name)}</span><div class="sp"></div><span class="chip ch-purple">${esc(l.sub_status)}</span></div>
+      ${(l.lead_events||[]).filter(e=>e.event_date===date).map(e=>`<div class="meta">${evLine(e)}</div>`).join("")}</div>`).join(""):""}
+    ${date>=T()?`<div class="btnrow"><button class="btn btn-rose" onclick="closeModal();setTimeout(()=>newLead('${date}'),60)">${icn("plus",16)} New lead for this date</button></div>`:""}`);
+}
+
+/* ================= SUITE ROOMS ================= */
+let rmCi="",rmCo="";
+function renderRooms(){
+  $("hdrTitle").textContent="Suite Rooms";
+  const n=new Date(calY,calM+1,0).getDate(),t=T();
+  const grid={};
+  for(const b of bookings){if(b.status==="CANCELLED")continue;for(const r of b.room_allocations||[]){if(!r.active)continue;
+    for(let d=1;d<=n;d++){const date=calY+"-"+p2(calM+1)+"-"+p2(d);if(r.check_in<=date&&date<r.check_out)grid[r.room_no+"_"+d]=b;}}}
+  const ok=rmCi&&rmCo&&rmCo>rmCi,taken=ok?roomsTaken(rmCi,rmCo):{};
+  app.innerHTML=`<div class="page">${calHead()}
+    <div class="tabs"><button class="tab" onclick="history.replaceState({t:'view',v:'calendar'},'','#calendar');view='calendar';renderView(true)">Halls</button><button class="tab on">Suite rooms</button></div>
+    <div class="card glass"><div class="sec" style="margin-top:0">Check room availability</div>
+      <div class="g2"><div><label>Check-in</label><input type="date" value="${rmCi}" onchange="rmCi=this.value;if(!rmCo||rmCo<=rmCi)rmCo=addDays(rmCi,1);renderRooms()"></div>
+      <div><label>Check-out</label><input type="date" value="${rmCo}" onchange="rmCo=this.value;renderRooms()"></div></div>
+      ${ok?`<div class="hint ${ROOMS-Object.keys(taken).length?"h-green":"h-red"}">${ROOMS-Object.keys(taken).length} of ${ROOMS} suites free for ${diff(rmCi,rmCo)} night${diff(rmCi,rmCo)>1?"s":""}</div>
+        <div class="rooms">${Array.from({length:ROOMS},(_,k)=>k+1).map(x=>taken[x]?`<div class="rm taken">${x}<small>${esc(taken[x].customer_name)}</small></div>`:`<div class="rm">${x}<small>Free</small></div>`).join("")}</div>`:""}
+    </div>
+    <div class="rgridwrap glass"><table class="rgrid"><tr><th class="rn">Room</th>${Array.from({length:n},(_,i)=>{const dw=new Date(calY,calM,i+1).getDay();return `<th class="${dw===0||dw===6?"we":""}">${i+1}</th>`;}).join("")}</tr>
+      ${Array.from({length:ROOMS},(_,k)=>k+1).map(r=>`<tr><td class="rn">Suite ${r}</td>${Array.from({length:n},(_,i)=>{const b=grid[r+"_"+(i+1)];
+        return b?`<td class="bk" title="${esc(b.customer_name)}" onclick="nav('booking','${b.id}')"></td>`:`<td></td>`;}).join("")}</tr>`).join("")}</table></div>
+    <div class="legend"><span><i style="background:#d0577a"></i>Occupied night (tap to open booking)</span><span><i style="background:var(--green-s)"></i>Free</span></div>
+    <div class="sub">Each box is one night. A room booked from 20th to 22nd is occupied on the nights of 20 and 21, and free again from the 22nd.</div>
+  </div>`;
+}
+
+/* ================= REPORTS ================= */
+let repRange="FY";
+function renderReports(){
+  $("hdrTitle").textContent="Reports";
+  if(!isAdmin()){app.innerHTML=`<div class="empty">Admin only</div>`;return;}
+  const now=new Date(),fyStart=(now.getMonth()>=3?now.getFullYear():now.getFullYear()-1)+"-04-01",mStart=now.getFullYear()+"-"+p2(now.getMonth()+1)+"-01";
+  const from=repRange==="FY"?fyStart:repRange==="MONTH"?mStart:"0000";
+  const L=leads.filter(l=>l.created_at.slice(0,10)>=from),B=bookings.filter(b=>b.booking_date>=from&&b.status!=="CANCELLED");
+  const conv=L.filter(l=>l.status==="CONVERTED").length,lost=L.filter(l=>l.status==="LOST").length,act=L.filter(l=>l.status==="ACTIVE").length;
+  const tot=B.reduce((s,b)=>s+ +b.total_amount,0),paid=B.reduce((s,b)=>s+ +b.paid_amount,0);
+  const pipe=L.filter(l=>l.status==="ACTIVE").reduce((s,l)=>s+ +(l.offered_price||0),0);
+  const group=(arr,fn)=>{const m={};arr.forEach(x=>{const k=fn(x)||"NOT SET";m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+  const bars=(rows,total)=>rows.length?rows.map(([k,v,extra])=>`<div style="margin-bottom:10px"><div class="row"><span style="font-size:12.5px;font-weight:600">${esc(cap(k))}</span><div class="sp"></div><span class="sub">${v}${extra||""}</span></div>
+    <div class="bar"><i style="width:${total?Math.round(v/total*100):0}%"></i></div></div>`).join(""):`<div class="sub">No data yet.</div>`;
+  const src=group(L,l=>l.source).map(([k,v])=>{const c=L.filter(l=>l.source===k&&l.status==="CONVERTED").length;return [k,v,` leads · ${c} booked (${Math.round(c/v*100)}%)`];});
+  const staff=group(L,l=>pname(l.assigned_to)).map(([k,v])=>{const c=L.filter(l=>pname(l.assigned_to)===k&&l.status==="CONVERTED").length;return [k,v,` leads · ${c} booked`];});
+  app.innerHTML=`<div class="page">
+    <div class="tabs">${[["MONTH","This month"],["FY","This financial year"],["ALL","All time"]].map(([k,l])=>`<button class="tab ${repRange===k?"on":""}" onclick="repRange='${k}';renderReports()">${l}</button>`).join("")}</div>
+    <div class="stats"><div class="stat glass"><b>${L.length}</b><span>Leads</span></div><div class="stat glass"><b>${conv}</b><span>Booked</span></div>
+      <div class="stat glass"><b>${lost}</b><span>Lost</span></div><div class="stat glass"><b>${L.length?Math.round(conv/L.length*100):0}%</b><span>Conversion</span></div></div>
+    <div class="stats" style="grid-template-columns:repeat(2,1fr)"><div class="stat glass"><b>${inr(tot)}</b><span>Booked value</span></div><div class="stat glass"><b style="color:var(--green)">${inr(paid)}</b><span>Collected</span></div>
+      <div class="stat glass"><b style="color:var(--red)">${inr(Math.max(tot-paid,0))}</b><span>Outstanding</span></div><div class="stat glass"><b>${inr(pipe)}</b><span>Open pipeline (${act})</span></div></div>
+    <div class="sec">Lead sources</div><div class="card glass">${bars(src,L.length)}</div>
+    <div class="sec">Why leads were lost</div><div class="card glass">${bars(group(L.filter(l=>l.status==="LOST"),l=>l.lost_reason),lost)}</div>
+    <div class="sec">Event types</div><div class="card glass">${bars(group(L.flatMap(l=>l.lead_events||[]),e=>e.event_type),L.flatMap(l=>l.lead_events||[]).length)}</div>
+    <div class="sec">Team</div><div class="card glass">${bars(staff,L.length)}</div>
+  </div>`;
+}
+
+/* ================= TEAM ================= */
+function renderTeam(){
+  $("hdrTitle").textContent="Team";
+  if(!isOwner()){app.innerHTML=`<div class="empty">Owner only</div>`;return;}
+  app.innerHTML=`<div class="page">
+    <div class="sub" style="margin-bottom:12px">To add a new login: Supabase, Authentication, Users, Add user (tick Auto Confirm). The person appears here on their own as Staff. Owner and Manager have all powers.</div>
+    ${profiles.map(p=>`<div class="card glass">
+      <div class="row"><span class="title">${esc(p.name)||"(no name)"}</span><div class="sp"></div>
+        <span class="chip ${p.role==="owner"?"ch-rose":p.role==="manager"?"ch-blue":"ch-gray"}">${p.role.toUpperCase()}</span>
+        <span class="chip ${p.active?"ch-green":"ch-red"}" style="cursor:pointer" onclick="toggleActive('${p.id}')">${p.active?"ACTIVE":"OFF"}</span></div>
+      <div class="sub">${esc(p.email||"")}</div>
+      <div class="g2"><div><label>Name</label><input id="nm_${p.id}" value="${esc(p.name)}"></div>
+      <div><label>Telegram ID</label><input id="tg_${p.id}" value="${esc(p.telegram_chat_id||"")}" placeholder="from @userinfobot" inputmode="numeric"></div></div>
+      <div class="btnrow"><button class="btn btn-sm" onclick="saveMember('${p.id}')">Save name and Telegram</button></div>
+      ${p.id!==me.id?`<label>Role</label><select onchange="setRole('${p.id}',this.value)">${opts(["staff","manager","owner"],p.role)}</select>`:""}
+      ${p.role==="staff"?`<label>Powers</label><div class="row wrap" style="gap:6px">${POWER_DEFS.map(([k,l])=>`<button class="tab ${p.powers?.[k]?"on":""}" onclick="togglePower('${p.id}','${k}')">${l}</button>`).join("")}</div>`:""}
+    </div>`).join("")}</div>`;
+}
+async function profUpdate(id,patch,msg){const {error}=await sb.from("profiles").update(patch).eq("id",id);if(error)return toast(error.message);await loadData();if(msg)toast(msg);renderTeam();}
+const saveMember=id=>profUpdate(id,{name:$("nm_"+id).value.trim(),telegram_chat_id:$("tg_"+id).value.trim()||null},"Saved");
+const setRole=(id,role)=>profUpdate(id,{role},"Role updated");
+function togglePower(id,k){const p=profiles.find(x=>x.id===id);profUpdate(id,{powers:{...(p.powers||{}),[k]:!p.powers?.[k]}});}
+function toggleActive(id){const p=profiles.find(x=>x.id===id);if(p.id===me.id)return toast("You cannot switch yourself off");profUpdate(id,{active:!p.active});}
+
+/* ================= SETTINGS ================= */
+function renderSettings(){
+  $("hdrTitle").textContent="Settings";
+  if(!isAdmin()){app.innerHTML=`<div class="empty">Admin only</div>`;return;}
+  const s=BIZ,F=(k,l,ph="")=>`<label>${l}</label><input id="st_${k}" value="${esc(s[k]||"")}" placeholder="${ph}">`;
+  app.innerHTML=`<div class="page">
+    <div class="card glass"><div class="sec" style="margin-top:0">Business details (printed on PDF)</div>
+      ${F("name","Business name")}${F("tagline","Tagline")}${F("phone","Phone numbers")}
+      <label>Address</label><textarea id="st_address">${esc(s.address||"")}</textarea>${F("gstin","GSTIN")}
+      <label>Terms and conditions (printed on quotation and booking PDF)</label><textarea id="st_terms" style="min-height:130px">${esc(s.terms||"")}</textarea>
+      <div class="btnrow"><button class="btn btn-rose" onclick="saveSettings()">Save settings</button></div></div>
+    <div class="card glass"><div class="sec" style="margin-top:0">Telegram</div>
+      <div class="sub">After running telegram.sql and saving your Telegram ID in Team, press the button to test.</div>
+      <div class="btnrow"><button class="btn" onclick="tgTest()">Send test message to me</button></div></div>
+    <p class="sub" style="text-align:center">Rosellia app v${APP_VERSION}</p></div>`;
+}
+async function saveSettings(){const v={...BIZ};for(const k of ["name","tagline","phone","address","gstin","terms"])v[k]=$("st_"+k).value.trim();
+  const {error}=await sb.from("settings").update({value:v}).eq("key","business");if(error)return toast(error.message);BIZ=v;toast("Settings saved");}
+async function tgTest(){const {data,error}=await sb.rpc("tg_test");toast(error?"Telegram is not set up yet. Run telegram.sql first.":data);}
+
+/* ---------- start ---------- */
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+init();
+</script>
+</body>
+</html>
