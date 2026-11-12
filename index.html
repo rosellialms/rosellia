@@ -136,6 +136,14 @@ header{position:sticky;top:0;z-index:50;margin:8px 10px 0;padding:9px 12px;displ
 .evt b{display:block;font-size:15.5px;font-weight:700;margin-top:2px;overflow-wrap:anywhere}
 .evt.miss b{color:var(--amber);font-weight:600}
 .evl{color:var(--text)!important;font-size:13px!important}
+.evr{display:flex;gap:11px;align-items:center;margin-top:10px}
+.dbox{flex:none;width:62px;text-align:center;border-radius:13px;background:var(--rose-s);color:var(--rose);padding:6px 2px 7px;line-height:1.05}
+.dbox small{display:block;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+.dbox b{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:27px;font-weight:700}
+.dbox.none{background:var(--amber-s);color:var(--amber);padding:11px 2px}
+.dbox.past{background:var(--line);color:var(--muted)}
+.evr .et{font-weight:700;font-size:14.5px}
+.evr .ed{font-size:12.5px;color:var(--muted);margin-top:2px}
 .xgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 @media(max-width:480px){.xgrid{grid-template-columns:1fr}}
 .xrow{display:flex;align-items:center;gap:8px;padding:7px 8px 7px 12px;border:1px solid var(--edge);border-radius:13px;background:var(--glass2)}
@@ -214,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "5";
+const APP_VERSION = "6";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -317,7 +325,7 @@ function autoNextFromEvents(evs){const t=T();const d=evs.map(e=>e.event_date).fi
 function fuState(l){if(l.status!=="ACTIVE")return null;if(!l.next_followup)return{k:"today",late:0,none:true};
   const late=diff(l.next_followup,T());return {k:late<0?"upcoming":late===0?"today":late<=2?"overdue":"missed",late};}
 function daysLeftChip(l){const d=nearestEvent(l);if(!d)return `<span class="chip ch-gray">DATE NOT FINAL</span>`;
-  const n=diff(T(),d);return `<span class="chip ${n<15?"ch-red":n<30?"ch-amber":n<=60?"ch-blue":"ch-green"}">${n===0?"TODAY":n+" DAYS LEFT"}</span>`;}
+  const n=diff(T(),d);return `<span class="chip ${n<15?"ch-red":n<30?"ch-amber":n<=60?"ch-blue":"ch-green"}">${leftTxt(n).toUpperCase()}</span>`;}
 function fuChip(l){const s=fuState(l);if(!s)return"";
   if(s.none)return `<span class="chip ch-amber">NO FOLLOW-UP SET</span>`;
   if(s.k==="upcoming")return `<span class="chip ch-gray">CALL ${fmtDs(l.next_followup).toUpperCase()}</span>`;
@@ -594,13 +602,20 @@ async function saveLead(){
   }catch(err){toast(err.message||"Could not save");}
   finally{unlock();}
 }
-function evLine(e){return `<b>${esc(cap(e.event_type))}</b> · ${fmtD(e.event_date)}${e.event_date&&e.event_date>=T()?" ("+diff(T(),e.event_date)+" days)":""} · ${cap(e.session)}`
+const leftTxt=n=>n===0?"Today":n===1?"Tomorrow":n+" days left";
+/* list cards: the date gets its own box so it cannot be missed */
+function evRow(e,more){const v=e.venue||e.hall,t=T(),left=e.event_date&&e.event_date>=t?diff(t,e.event_date):null,d=e.event_date?pd(e.event_date):null;
+  const box=d?`<div class="dbox ${left==null?"past":""}"><small>${d.toLocaleDateString("en-IN",{weekday:"short"})}</small><b>${d.getDate()}</b><small>${d.toLocaleDateString("en-IN",{month:"short"})} ${d.getFullYear()}</small></div>`
+    :`<div class="dbox none"><small>Date</small><small>not final</small></div>`;
+  return `<div class="evr">${box}<div style="min-width:0"><div class="et">${esc(cap(e.event_type))}${left!=null?` <span style="color:${left<15?"var(--red)":left<30?"var(--amber)":"var(--green)"};font-size:12.5px">· ${leftTxt(left)}</span>`:""}</div>
+    <div class="ed">${cap(e.session)}${v?" · "+esc(HALLS[v].name):""}${e.guests?" · "+e.guests+" guests":""}${e.menu?" · "+cap(e.menu)+" menu":""}${e.rooms?" · "+e.rooms+" room"+(e.rooms>1?"s":""):""}${more||""}</div></div></div>`;}
+function evLine(e){return `<b>${esc(cap(e.event_type))}</b> · ${fmtD(e.event_date)}${e.event_date&&e.event_date>=T()?" ("+leftTxt(diff(T(),e.event_date)).toLowerCase()+")":""} · ${cap(e.session)}`
   +`${(e.venue||e.hall)?" · "+esc(HALLS[e.venue||e.hall].name):""}${e.guests?" · "+e.guests+" guests":""}${e.menu?" · "+cap(e.menu)+" menu":""}${e.rooms?" · "+e.rooms+" room"+(e.rooms>1?"s":""):""}`;}
 function evCard(e,extra){const v=e.venue||e.hall,left=e.event_date&&e.event_date>=T()?diff(T(),e.event_date):null;
   const t=(l,val,miss,wide)=>`<div class="evt ${val==null||val===""?"miss":""} ${wide?"wide":""}"><span>${l}</span><b>${val==null||val===""?miss:esc(val)}</b></div>`;
   const dt=e.event_date?pd(e.event_date).toLocaleDateString("en-IN",{weekday:"short",day:"numeric",month:"short",year:"numeric"}):"";
   return `<div class="card glass"><div class="row"><span class="evname">${esc(cap(e.event_type))}</span><div class="sp"></div>
-    ${left!=null?`<span class="chip ${left<15?"ch-red":left<30?"ch-amber":left<=60?"ch-blue":"ch-green"}">${left===0?"TODAY":left+" DAYS LEFT"}</span>`:e.event_date?`<span class="chip ch-gray">DATE PASSED</span>`:""}</div>
+    ${left!=null?`<span class="chip ${left<15?"ch-red":left<30?"ch-amber":left<=60?"ch-blue":"ch-green"}">${leftTxt(left).toUpperCase()}</span>`:e.event_date?`<span class="chip ch-gray">DATE PASSED</span>`:""}</div>
     <div class="evgrid">${t("Date",dt,"Not final yet",true)}${t("Session",cap(e.session))}
       ${t("Guests",e.guests,"Not given")}${t("Hall",v?HALLS[v].name:"","Not decided")}${t("Menu",e.menu?cap(e.menu):"","Not decided")}
       ${e.rooms!==undefined?t("Rooms needed",e.rooms?String(e.rooms):"","None"):""}</div>${extra||""}</div>`;}
@@ -611,7 +626,7 @@ function showSaved(id){const l=leadById(id);if(!l)return;
       <span>Source</span><b>${esc(cap(l.source))}</b><span>Assigned to</span><b>${esc(pname(l.assigned_to))}</b>
       <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b><span>Next call</span><b>${l.next_followup?fmtD(l.next_followup):"Not set"}</b>
       ${l.remarks?`<span>Remarks</span><b>${esc(l.remarks)}</b>`:""}</div>
-    <div class="sec">Events</div>${(l.lead_events||[]).map(e=>`<div class="meta evl">${evLine(e)}</div>`).join("")}
+    <div class="sec">Events</div>${(l.lead_events||[]).map(e=>evRow(e)).join("")}
     <div class="btnrow"><a class="btn btn-green" ${WA_T} href="${waLink(l.mobile,greet)}">${icn("chat",16)} WhatsApp greeting</a>
       <button class="btn" onclick="closeModal();setTimeout(()=>newLead(),60)">${icn("plus",16)} Another lead</button>
       <button class="btn btn-rose" onclick="closeModal()">Open lead</button></div>`);
@@ -650,7 +665,7 @@ function leadCard(l,extra,note){const ev=(l.lead_events||[])[0];
     <div class="row"><span class="title">${esc(l.customer_name)}</span><div class="sp"></div>
       ${l.status==="ACTIVE"?daysLeftChip(l):l.status==="LOST"?`<span class="chip ch-red">LOST</span>`:`<span class="chip ch-green">BOOKED</span>`}</div>
     <div class="meta">${esc(l.lead_no)} · ${esc(l.mobile)} · ${esc(cap(l.source))}</div>
-    ${ev?`<div class="meta evl">${evLine(ev)}${(l.lead_events||[]).length>1?` · <b>+${l.lead_events.length-1} more</b>`:""}</div>`:""}
+    ${ev?evRow(ev,(l.lead_events||[]).length>1?` · <b style="color:var(--text)">+${l.lead_events.length-1} more event${l.lead_events.length>2?"s":""}</b>`:""):""}
     <div class="row wrap" style="margin-top:9px">
       ${l.status==="LOST"?`<span class="chip ch-gray">${esc(l.lost_reason||"")}</span>`:`<span class="chip ch-purple">${esc(l.sub_status)}</span>`}
       ${fuChip(l)}<span class="chip ch-gray">${esc(pname(l.assigned_to)).toUpperCase()}</span><div class="sp"></div>
@@ -937,7 +952,7 @@ function renderBookings(){
     ${list.length?list.slice(0,LIM).map(b=>`<div class="card glass click" onclick="nav('booking','${b.id}')">
       <div class="row"><span class="title">${esc(b.customer_name)}</span><div class="sp"></div><span class="chip ${BKC[b.status]}">${b.status}</span></div>
       <div class="meta">${esc(b.booking_no)} · ${esc(b.mobile)}</div>
-      ${(b.booking_events||[]).map(e=>`<div class="meta evl">${evLine(e)}</div>`).join("")}
+      ${(b.booking_events||[]).map(e=>evRow(e)).join("")}
       <div class="row" style="margin-top:9px;font-size:12.5px"><span>Total <b>${inr(b.total_amount)}</b></span><div class="sp"></div><span>Paid <b style="color:var(--green)">${inr(b.paid_amount)}</b></span><div class="sp"></div>
         <span>Balance <b style="color:${b.total_amount-b.paid_amount>0?"var(--red)":"var(--green)"}">${inr(Math.max(b.total_amount-b.paid_amount,0))}</b></span></div>
       ${dueMap[b.id]?`<div class="row wrap" style="margin-top:9px" onclick="event.stopPropagation()">${dueChip(dueMap[b.id])}<span style="font-size:12.5px;font-weight:600">${inr(dueMap[b.id].amount)} · ${dueMap[b.id].label}</span><div class="sp"></div>
@@ -1319,7 +1334,7 @@ function renderRepeat(){
     ${list.length?list.slice(0,LIM).map((r,i)=>`<div class="card glass">
       <div class="row"><span class="title">${esc(r.b.customer_name)}</span><div class="sp"></div>
         ${r.done?`<span class="chip ch-gray">DONE THIS YEAR</span>`:`<span class="chip ${r.days<=30?"ch-red":r.days<=45?"ch-amber":"ch-blue"}">${r.days===0?"TODAY":"IN "+r.days+" DAYS"}</span>`}</div>
-      <div class="meta evl"><b>${r.kind}</b> on ${fmtD(r.next)}</div>
+      ${evRow({event_type:r.kind,event_date:r.next,session:r.e.session,hall:r.e.hall})}
       <div class="meta">Last hosted: ${esc(cap(r.e.event_type))} on ${fmtD(r.e.event_date)} · ${esc(HALLS[r.e.hall].name)}${r.e.guests?" · "+r.e.guests+" guests":""} · ${esc(r.b.booking_no)}</div>
       <div class="btnrow"><a class="btn btn-sm" href="tel:+91${m10(r.b.mobile)}">${icn("phone",15)} Call</a>
         <a class="btn btn-sm btn-green" ${WA_T} href="${waLink(r.b.mobile,repeatText(r))}">${icn("chat",15)} WhatsApp offer</a>

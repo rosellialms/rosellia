@@ -1,6 +1,6 @@
 // ROSELLIA service worker: network-first for the app shell (same as SKYOPS)
 // IMPORTANT: change the version number below every time you upload a new index.html
-const CACHE = "rosellia-v5";
+const CACHE = "rosellia-v6";
 const ASSETS = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
