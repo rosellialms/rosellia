@@ -222,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "6";
+const APP_VERSION = "7";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -452,7 +452,7 @@ function renderHome(){
   const liveB=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status));
   const up=upcomingEvents(7);
   const unassigned=active.filter(l=>!l.assigned_to);
-  const pastDue=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status)&&(b.booking_events||[]).length&&(b.booking_events||[]).every(e=>e.event_date<T()));
+  const pastDue=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status)&&((b.booking_events||[]).length?(b.booking_events||[]).every(e=>e.event_date<T()):bkRooms(b).length>0&&bkRooms(b).every(r=>r.check_out<=T())));
   const dues=dueBookings(0),review=reviewLeads(),repSoon=repeatList().filter(r=>r.days<=45&&!r.done),bAge=backupAge();
   const mods=[
     ["leadform","plus","rose","New Lead","Register an enquiry",0],
@@ -937,7 +937,14 @@ async function saveBF(){
 /* ================= BOOKINGS ================= */
 let bkTab="LIVE";
 const BKC={"AWAITING ADVANCE":"ch-amber","ADVANCE RECEIVED":"ch-blue","PART PAYMENT RECEIVED":"ch-purple","FULL PAID":"ch-green","EVENT COMPLETED":"ch-gray","CANCELLED":"ch-red"};
-const bkFirstDate=b=>((b.booking_events||[]).map(e=>e.event_date).sort()[0])||"9999";
+const isRoomOnly=b=>!(b.booking_events||[]).length;
+const bkRooms=b=>(b.room_allocations||[]).filter(r=>r.active);
+const bkFirstDate=b=>((b.booking_events||[]).map(e=>e.event_date).sort()[0])||(bkRooms(b).map(r=>r.check_in).sort()[0])||"9999";
+/* one line with a date box for a room stay, used on list cards of room-only bookings */
+function roomRow(b){const rs_=bkRooms(b);if(!rs_.length)return"";const ci=rs_.map(r=>r.check_in).sort()[0],co=rs_.map(r=>r.check_out).sort().pop(),t=T(),d=pd(ci),left=ci>=t?diff(t,ci):null;
+  return `<div class="evr"><div class="dbox ${co<=t?"past":""}"><small>${d.toLocaleDateString("en-IN",{weekday:"short"})}</small><b>${d.getDate()}</b><small>${d.toLocaleDateString("en-IN",{month:"short"})} ${d.getFullYear()}</small></div>
+    <div style="min-width:0"><div class="et">Suite rooms${left!=null?` <span style="color:${left<3?"var(--red)":"var(--green)"};font-size:12.5px">· ${left===0?"Check-in today":left===1?"Check-in tomorrow":"Check-in in "+left+" days"}</span>`:ci<t&&co>t?` <span style="color:var(--blue);font-size:12.5px">· Staying now</span>`:""}</div>
+    <div class="ed">${rs_.length} room${rs_.length>1?"s":""} (Suite ${rs_.map(r=>r.room_no).join(", ")}) · ${fmtDs(ci)} to ${fmtDs(co)} · ${diff(ci,co)} night${diff(ci,co)>1?"s":""}</div></div></div>`;}
 function renderBookings(){
   $("hdrTitle").textContent="Bookings";
   const cnt=s=>bookings.filter(b=>b.status===s).length;
@@ -952,7 +959,7 @@ function renderBookings(){
     ${list.length?list.slice(0,LIM).map(b=>`<div class="card glass click" onclick="nav('booking','${b.id}')">
       <div class="row"><span class="title">${esc(b.customer_name)}</span><div class="sp"></div><span class="chip ${BKC[b.status]}">${b.status}</span></div>
       <div class="meta">${esc(b.booking_no)} · ${esc(b.mobile)}</div>
-      ${(b.booking_events||[]).map(e=>evRow(e)).join("")}
+      ${(b.booking_events||[]).map(e=>evRow(e)).join("")}${isRoomOnly(b)?roomRow(b):""}
       <div class="row" style="margin-top:9px;font-size:12.5px"><span>Total <b>${inr(b.total_amount)}</b></span><div class="sp"></div><span>Paid <b style="color:var(--green)">${inr(b.paid_amount)}</b></span><div class="sp"></div>
         <span>Balance <b style="color:${b.total_amount-b.paid_amount>0?"var(--red)":"var(--green)"}">${inr(Math.max(b.total_amount-b.paid_amount,0))}</b></span></div>
       ${dueMap[b.id]?`<div class="row wrap" style="margin-top:9px" onclick="event.stopPropagation()">${dueChip(dueMap[b.id])}<span style="font-size:12.5px;font-weight:600">${inr(dueMap[b.id].amount)} · ${dueMap[b.id].label}</span><div class="sp"></div>
@@ -964,7 +971,7 @@ function bookingText(b){
   const rooms=(b.room_allocations||[]).filter(r=>r.active);
   return `*${(BIZ.name||"ROSELLIA").toUpperCase()}* ${BIZ.tagline||"Banquets & Suites"}\n*Booking Confirmed* ✅\n\nRef: ${b.booking_no}\nName: ${b.customer_name}\n\n`
     +(b.booking_events||[]).filter(e=>e.active).map(e=>`• *${cap(e.event_type)}*: ${fmtD(e.event_date)}, ${cap(e.session)}, ${HALLS[e.hall].name}${e.guests?", "+e.guests+" guests":""}${e.menu?", "+cap(e.menu)+" menu":""}`).join("\n")
-    +(rooms.length?`\n• *Suite rooms*: ${rooms.length} room${rooms.length>1?"s":""} (${[...new Set(rooms.map(r=>fmtDs(r.check_in)+" to "+fmtDs(r.check_out)))].join(", ")})`:"")
+    +(rooms.length?`\n• *Suite rooms*: ${rooms.length} room${rooms.length>1?"s":""}, Suite ${rooms.map(r=>r.room_no).join(", ")} (${[...new Set(rooms.map(r=>fmtDs(r.check_in)+" to "+fmtDs(r.check_out)))].join(", ")})`:"")
     +(extrasAny(b.extras)?`\n• Requirements: ${extrasText(b.extras)}`:"")
     +(b.custom_notes?`\n• Special: ${b.custom_notes}`:"")
     +`\n\nBooking amount: ${inr(b.total_amount)}\nReceived: ${inr(b.paid_amount)}\n*Balance: ${inr(Math.max(b.total_amount-b.paid_amount,0))}*\n\nThank you for choosing ${cap(BIZ.name||"Rosellia")}.${BIZ.phone?"\nContact: "+BIZ.phone:""}`;}
@@ -997,9 +1004,8 @@ function renderBooking(){
       ${due?`<div class="hint ${due.late>=0?"h-red":"h-amber"}">${icn("alert",15)} ${due.label}: ${inr(due.amount)} ${due.late>0?"was due on "+fmtD(due.date)+" ("+due.late+" days ago)":due.late===0?"is due today":"is due by "+fmtD(due.date)}
         <div class="btnrow"><a class="btn btn-sm btn-green" ${WA_T} href="${waLink(b.mobile,reminderText(b,due))}">${icn("chat",15)} Send polite payment reminder</a></div></div>`:""}
     </div>
-    <div class="sec">Events</div>
-    ${(b.booking_events||[]).map(e=>evCard(e)).join("")}
-    <div class="sec">Requirements</div>${extrasView(b.extras)}
+    ${isRoomOnly(b)?`<div class="hint h-green" style="margin-bottom:6px">${icn("bed",15)} Room booking only (no hall event)</div>`
+      :`<div class="sec">Events</div>${(b.booking_events||[]).map(e=>evCard(e)).join("")}<div class="sec">Requirements</div>${extrasView(b.extras)}`}
     ${b.custom_notes?`<div class="card glass"><div class="sub">Custom requirements</div><div style="white-space:pre-wrap;margin-top:4px">${esc(b.custom_notes)}</div></div>`:""}
     <div class="sec">Suite rooms (${rooms.length})</div>
     ${rooms.length?rooms.map(r=>`<div class="card glass"><div class="row"><span class="title">Suite ${r.room_no}</span><div class="sp"></div>
@@ -1014,9 +1020,9 @@ function renderBooking(){
       <div class="meta">${esc(p.note||"")}${p.by_name?" · entered by "+esc(p.by_name):""}</div></div>`).join(""):`<div class="sub" style="margin:0 2px 10px">No payment received yet.</div>`}
     <div class="btnrow">
       ${canPay?`<button class="btn btn-green" onclick="payModal('${b.id}')">${icn("plus",16)} Record payment</button>`:""}
-      ${canEdit?`<button class="btn" onclick="openEditBooking('${b.id}')">Edit booking</button>`:""}</div>
+      ${canEdit?`<button class="btn" onclick="${isRoomOnly(b)?"roomEditModal":"openEditBooking"}('${b.id}')">Edit booking</button>`:""}</div>
     <div class="btnrow">
-      ${canEdit&&b.status!=="EVENT COMPLETED"?`<button class="btn btn-gold" onclick="setBkStatus('${b.id}','EVENT COMPLETED')">${icn("check",16)} Mark event completed</button>`:""}
+      ${canEdit&&b.status!=="EVENT COMPLETED"?`<button class="btn btn-gold" onclick="setBkStatus('${b.id}','EVENT COMPLETED')">${icn("check",16)} ${isRoomOnly(b)?"Mark checked out":"Mark event completed"}</button>`:""}
       ${b.status==="EVENT COMPLETED"?`<button class="btn btn-gold" onclick="askReview('${b.id}')">${icn("star",16)} Ask for Google review</button>`:""}
       ${b.lead_id&&leadById(b.lead_id)?`<button class="btn" onclick="nav('lead','${b.lead_id}')">Lead history</button>`:""}
       ${isAdmin()&&b.status!=="CANCELLED"?`<button class="btn" style="color:var(--red)" onclick="cancelBooking('${b.id}')">Cancel booking</button>`:""}</div>
@@ -1093,8 +1099,9 @@ function pdfHeader(doc,W,M){
 function buildPDF(kind,o,x){
   const {jsPDF}=window.jspdf;const doc=new jsPDF({unit:"mm",format:"a4"});const W=210,M=14;
   pdfHeader(doc,W,M);
+  const evs0=kind==="QUOTE"||(o.booking_events||[]).some(e=>e.active);
   let y=48;doc.setTextColor(110,32,58);doc.setFont("times","bold");doc.setFontSize(17);
-  doc.text(kind==="QUOTE"?"QUOTATION":"BOOKING CONFIRMATION",M,y);
+  doc.text(kind==="QUOTE"?"QUOTATION":!evs0?"ROOM BOOKING CONFIRMATION":"BOOKING CONFIRMATION",M,y);
   doc.setFont("helvetica","normal");doc.setFontSize(9.5);doc.setTextColor(60,60,60);
   doc.text((kind==="QUOTE"?"Quotation No: ":"Booking Ref: ")+(o.lead_no||o.booking_no),W-M,y-4,{align:"right"});
   doc.text("Date: "+fmtD(kind==="QUOTE"?T():o.booking_date),W-M,y+1,{align:"right"});
@@ -1104,10 +1111,10 @@ function buildPDF(kind,o,x){
   doc.setFont("helvetica","normal");doc.setFontSize(10);doc.text("Mobile: "+o.mobile+(o.alt_mobile?" / "+o.alt_mobile:""),M,y+5.5);y+=12;
   const hs={fillColor:[110,32,58],textColor:255,fontStyle:"bold",fontSize:9},st={fontSize:9.5,cellPadding:2.6,lineColor:[225,212,200],lineWidth:0.2};
   const evs=kind==="QUOTE"?(o.lead_events||[]):(o.booking_events||[]).filter(e=>e.active);
-  doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",headStyles:hs,styles:st,
+  if(evs.length)doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",headStyles:hs,styles:st,
     head:[["Event","Date","Session","Hall","Guests","Menu"]],
     body:evs.map(e=>[ascii(cap(e.event_type)),fmtD(e.event_date),cap(e.session),(e.venue||e.hall)?HALLS[e.venue||e.hall].name:"To be decided",e.guests||"-",e.menu?cap(e.menu):"To be decided"])});
-  y=doc.lastAutoTable.finalY+6;
+  if(evs.length)y=doc.lastAutoTable.finalY+6;
   if(kind==="BOOKING"){const rooms=(o.room_allocations||[]).filter(r=>r.active);
     if(rooms.length){doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",headStyles:hs,styles:st,head:[["Suite room","Check-in","Check-out","Nights"]],
       body:rooms.map(r=>["Suite "+r.room_no,fmtD(r.check_in),fmtD(r.check_out),diff(r.check_in,r.check_out)])});y=doc.lastAutoTable.finalY+6;}
@@ -1240,7 +1247,8 @@ function extrasText(x){if(!extrasAny(x))return"";
 /* ================= PAYMENT SCHEDULE AND REMINDERS ================= */
 /* From the terms: 25% at booking, total 75% one month before the event, 100% two days before. */
 const PAY_PLAN=[[25,"Advance (25%)",null],[75,"Second payment (total 75%)",30],[100,"Final balance",2]];
-function payPlan(b){const ev=(b.booking_events||[]).filter(e=>e.active).map(e=>e.event_date).sort()[0];if(!ev)return[];
+function payPlan(b){const ev=(b.booking_events||[]).filter(e=>e.active).map(e=>e.event_date).sort()[0];
+  if(!ev){const ci=bkRooms(b).map(r=>r.check_in).sort()[0];return ci&&isRoomOnly(b)?[{pct:100,label:"Room payment",date:ci<b.booking_date?b.booking_date:ci,need:Math.round(b.total_amount)}]:[];}
   return PAY_PLAN.map(([pct,label,days])=>{let date=days==null?b.booking_date:addDays(ev,-days);if(date<b.booking_date)date=b.booking_date;
     return {pct,label,date,need:Math.round(b.total_amount*pct/100)};});}
 function payDue(b){if(b.status==="CANCELLED")return null;
@@ -1278,7 +1286,7 @@ function buildReceipt(b,p){
   const evs=(b.booking_events||[]).filter(e=>e.active).map(e=>cap(e.event_type)+" on "+fmtD(e.event_date)+", "+HALLS[e.hall].name+", "+cap(e.session)).join("\n");
   doc.autoTable({startY:y,margin:{left:M,right:M},theme:"grid",styles:st,columnStyles:{0:{cellWidth:52,textColor:[110,110,110]},1:{fontStyle:"bold"}},
     body:[["Amount received",rs(p.amount)],["Amount in words","Rupees "+inWords(p.amount)+" Only"],["Payment mode",ascii(p.mode)+(p.note?"  ("+ascii(p.note)+")":"")],
-      ["Against booking",b.booking_no],["Event",ascii(evs)||"-"]],
+      ["Against booking",b.booking_no],[evs?"Event":"Stay",ascii(evs)||bkRooms(b).map(r=>"Suite "+r.room_no+": "+fmtD(r.check_in)+" to "+fmtD(r.check_out)).join("\n")||"-"]],
     didParseCell:d=>{if(d.row.index===0){d.cell.styles.fillColor=[246,236,224];d.cell.styles.textColor=[110,32,58];d.cell.styles.fontSize=12.5;}}});
   y=doc.lastAutoTable.finalY+7;
   doc.autoTable({startY:y,margin:{left:W-M-86,right:M},theme:"grid",styles:st,columnStyles:{0:{cellWidth:46},1:{halign:"right",fontStyle:"bold"}},
@@ -1386,6 +1394,58 @@ async function doBackup(){
   }catch(e){toast(e.message||"Backup failed");}finally{unlock();}
 }
 
+/* ================= DIRECT ROOM BOOKING (no lead, no event) ================= */
+let RB=null;
+function roomBookModal(){const ok=rmCi&&rmCo&&rmCo>rmCi&&rmCi>=T();
+  RB={name:"",mobile:"",ci:ok?rmCi:T(),co:ok?rmCo:addDays(T(),1),sel:new Set(),amount:"",advance:"",mode:"CASH",notes:""};renderRB();}
+function rbRead(){if(!RB||!$("rbName"))return;settle();RB.name=$("rbName").value;RB.mobile=$("rbMob").value;RB.ci=$("rbCi").value;RB.co=$("rbCo").value;
+  RB.amount=$("rbAmt").value;RB.advance=$("rbAdv").value;RB.mode=$("rbMode").value;RB.notes=$("rbNotes").value;}
+function rbDates(){rbRead();if(RB.ci&&(!RB.co||RB.co<=RB.ci))RB.co=addDays(RB.ci,1);renderRB();}
+function renderRB(){const f=RB,ok=f.ci&&f.co&&f.co>f.ci,taken=ok?roomsTaken(f.ci,f.co):{};for(const n of [...f.sel])if(taken[n])f.sel.delete(n);
+  const nights=ok?diff(f.ci,f.co):0,free=ROOMS-Object.keys(taken).length;
+  modal(`<h2>Book rooms</h2><p class="sub">For guests who need only rooms. No lead is needed.</p>
+    <div class="g2"><div><label>Guest name <b>*</b></label><input id="rbName" value="${esc(f.name)}" autocomplete="off"></div>
+    <div><label>Mobile number <b>*</b></label><input id="rbMob" inputmode="numeric" maxlength="14" value="${esc(f.mobile)}"></div></div>
+    <div class="g2"><div><label>Check-in <b>*</b></label><input type="date" id="rbCi" value="${esc(f.ci)}" onchange="rbDates()"></div>
+    <div><label>Check-out <b>*</b></label><input type="date" id="rbCo" value="${esc(f.co)}" onchange="rbDates()"></div></div>
+    ${ok?`<label>Select rooms <b>*</b> (${free} of ${ROOMS} free for ${nights} night${nights>1?"s":""})</label>
+      <div class="rooms">${Array.from({length:ROOMS},(_,k)=>k+1).map(n=>taken[n]?`<div class="rm taken">${n}<small>${esc(taken[n].customer_name)}</small></div>`
+        :`<button class="rm ${f.sel.has(n)?"sel":""}" onclick="rbRead();RB.sel.has(${n})?RB.sel.delete(${n}):RB.sel.add(${n});renderRB()">${n}<small>${f.sel.has(n)?"Selected":"Free"}</small></button>`).join("")}</div>`
+      :`<div class="hint h-amber">Check-out must be after check-in.</div>`}
+    <div class="g3"><div><label>Total amount (₹) <b>*</b></label><input type="number" inputmode="numeric" id="rbAmt" value="${esc(f.amount)}"></div>
+    <div><label>Paid now (₹)</label><input type="number" inputmode="numeric" id="rbAdv" value="${esc(f.advance)}"></div>
+    <div><label>Mode</label><select id="rbMode">${opts(PAY_MODES,f.mode)}</select></div></div>
+    <label>Note</label><input id="rbNotes" value="${esc(f.notes)}" placeholder="Extra bed, early check-in">
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveRB()">Book ${f.sel.size||""} room${f.sel.size===1?"":"s"}</button></div>`);}
+async function saveRB(){rbRead();const f=RB;
+  if(!f.name.trim())return toast("Guest name is mandatory");
+  if(m10(f.mobile).length!==10)return toast("Enter a 10 digit mobile number");
+  if(!(f.ci&&f.co&&f.co>f.ci))return toast("Check-out must be after check-in");
+  if(!f.sel.size)return toast("Select at least one free room");
+  const amt=num(f.amount);if(amt==null||amt<0)return toast("Total amount is mandatory");
+  const adv=num(f.advance)||0;if(adv>amt+0.5&&!confirm("Paid amount is more than the total. Save anyway?"))return;
+  if(lock())return;
+  try{const {data,error}=await sb.rpc("book_rooms",{p:{customer_name:f.name.trim(),mobile:m10(f.mobile),check_in:f.ci,check_out:f.co,rooms:[...f.sel].sort((a,b)=>a-b),
+      total_amount:String(amt),advance:adv?String(adv):"",advance_mode:f.mode,notes:f.notes.trim()}});
+    if(error)throw error;
+    $("modalHost").innerHTML="";RB=null;await loadData();
+    if(history.state&&history.state.t==="modal")history.replaceState({t:"view",v:"booking",arg:data},"","#booking");else history.pushState({t:"view",v:"booking",arg:data},"","#booking");
+    view="booking";viewArg=data;renderView();confirmedModal(data);
+  }catch(e){toast(/book_rooms/.test(e.message||"")?"Run update-v7.sql in Supabase first":(e.message||"Could not save"));await loadData();if(RB)renderRB();}
+  finally{unlock();}}
+function roomEditModal(id){const b=bkById(id);
+  modal(`<h2>Edit room booking</h2><p class="sub">${esc(b.booking_no)}. To change rooms or dates, use Release and Allocate rooms on the booking page.</p>
+    <div class="g2"><div><label>Guest name <b>*</b></label><input id="reName" value="${esc(b.customer_name)}"></div>
+    <div><label>Mobile number <b>*</b></label><input id="reMob" inputmode="numeric" maxlength="14" value="${esc(b.mobile)}"></div></div>
+    <label>Total amount (₹) <b>*</b></label><input type="number" inputmode="numeric" id="reAmt" value="${esc(b.total_amount)}">
+    <label>Note</label><input id="reNotes" value="${esc(b.custom_notes||"")}">
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-green" onclick="saveRoomEdit('${id}')">Save changes</button></div>`);}
+async function saveRoomEdit(id){const name=$("reName").value.trim(),mob=m10($("reMob").value),amt=num($("reAmt").value);
+  if(!name)return toast("Guest name is mandatory");if(mob.length!==10)return toast("Enter a 10 digit mobile number");if(amt==null||amt<0)return toast("Total amount is mandatory");
+  const {error}=await sb.from("bookings").update({customer_name:name,mobile:mob,total_amount:amt,custom_notes:$("reNotes").value.trim()||null}).eq("id",id);
+  if(error)return toast(error.message);closeModal();await refresh();toast("Room booking updated");}
+
 /* ================= HALL CALENDAR ================= */
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
 function calMove(n){calM+=n;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderView(true);}
@@ -1435,6 +1495,7 @@ function renderRooms(){
   const ok=rmCi&&rmCo&&rmCo>rmCi,taken=ok?roomsTaken(rmCi,rmCo):{};
   app.innerHTML=`<div class="page">${calHead()}
     <div class="tabs"><button class="tab" onclick="history.replaceState({t:'view',v:'calendar'},'','#calendar');view='calendar';renderView(true)">Halls</button><button class="tab on">Suite rooms</button></div>
+    ${hasPower("bookings")?`<button class="btn btn-rose btn-block" style="margin-bottom:10px;padding:14px" onclick="roomBookModal()">${icn("bed",17)} Book rooms directly</button>`:""}
     <div class="card glass"><div class="sec" style="margin-top:0">Check room availability</div>
       <div class="g2"><div><label>Check-in</label><input type="date" value="${rmCi}" onchange="rmCi=this.value;if(!rmCo||rmCo<=rmCi)rmCo=addDays(rmCi,1);renderRooms()"></div>
       <div><label>Check-out</label><input type="date" value="${rmCo}" onchange="rmCo=this.value;renderRooms()"></div></div>
