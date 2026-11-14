@@ -222,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -297,9 +297,21 @@ let busyLock=false;
 function lock(){if(busyLock){toast("Please wait, saving");return true;}busyLock=true;return false;}
 function unlock(){busyLock=false;}
 function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3400);}
+/* ROLES
+   owner: everything.  manager (older role): everything except Team.
+   admin and sales_manager: everything except Reports, Settings, Team. Cannot delete. Editing existing leads and bookings needs the owner's permit.
+   operation_manager: lead entry, bookings (view), hall calendar, room booking, payment collection, QR code. Nothing else.
+   staff (older role): powers chosen one by one in Team. */
+const ROLE_LABEL={owner:"Owner",admin:"Admin",sales_manager:"Sales Manager",operation_manager:"Operation Manager",manager:"Manager (full access)",staff:"Staff (custom powers)"};
 const isOwner=()=>me?.role==="owner";
 const isAdmin=()=>me?.role==="owner"||me?.role==="manager";
-const hasPower=p=>isAdmin()||me?.powers?.[p]===true;
+const isSales=()=>me?.role==="admin"||me?.role==="sales_manager";
+const isOps=()=>me?.role==="operation_manager";
+const canData=()=>isAdmin()||isSales();
+const hasPower=p=>isAdmin()||(isSales()&&["see_all","convert","bookings","payments","rooms"].includes(p))||(isOps()&&["payments","rooms"].includes(p))
+  ||me?.powers?.[p]===true||(p==="rooms"&&me?.powers?.bookings===true);
+function canView(v){if(isOps())return ["home","leadform","bookings","booking","calendar","rooms"].includes(v);
+  if(v==="reports"||v==="settings"||v==="permits")return isAdmin();if(v==="team")return isOwner();if(v==="promo"||v==="log")return canData();return true;}
 const pname=id=>profiles.find(p=>p.id===id)?.name||"Unassigned";
 const leadById=id=>leads.find(l=>l.id===id);
 const bkById=id=>bookings.find(b=>b.id===id);
@@ -391,7 +403,7 @@ async function boot(){
   me=prof;
   await loadData();
   $("hdr").classList.remove("hide");
-  $("userChip").textContent=(me.name||"Me")+" · "+me.role.toUpperCase();
+  $("userChip").textContent=(me.name||"Me")+" · "+(ROLE_LABEL[me.role]||me.role).split(" (")[0].toUpperCase();
   subscribeRealtime();loadQR();
   history.replaceState(null,"",location.pathname+location.search);
   view="home";renderView();
@@ -399,13 +411,15 @@ async function boot(){
 /* Supabase returns at most 1000 rows per request, so big tables are read page by page */
 async function fetchAll(make){let out=[];for(let from=0;;from+=1000){const {data,error}=await make().range(from,from+999);if(error)return{data:out,error};out=out.concat(data||[]);if(!data||data.length<1000)break;}return{data:out};}
 async function loadData(){
-  const [p,l,b,s]=await Promise.all([
+  const [p,l,b,s,pm]=await Promise.all([
     sb.from("profiles").select("*").order("name"),
     fetchAll(()=>sb.from("leads").select("*, lead_events(*)").order("created_at",{ascending:false}).order("id")),
     fetchAll(()=>sb.from("bookings").select("*, booking_events(*), room_allocations(*), payments(*), booking_charges(*)").order("created_at",{ascending:false}).order("id")),
-    sb.from("settings").select("*")]);
+    sb.from("settings").select("*"),
+    sb.from("edit_permits").select("*").order("created_at",{ascending:false}).limit(300)]);
   if(l.error)toast(l.error.message);
   profiles=p.data||[];leads=l.data||[];bookings=b.data||[];
+  PERMITS=pm.data||[];
   const sv=k=>(s.data||[]).find(r=>r.key===k)?.value;BIZ=sv("business")||{};BACKUP=sv("backup")||null;
   const mine=profiles.find(x=>x.id===me.id);if(mine)me=mine;
   for(const x of leads)(x.lead_events||[]).sort((a,c)=>a.sort-c.sort);
@@ -416,7 +430,7 @@ function subscribeRealtime(){
   if(rtChannel)sb.removeChannel(rtChannel);
   const hit=()=>{clearTimeout(rtTimer);rtTimer=setTimeout(async()=>{await loadData();softRender();},500);};
   let ch=sb.channel("rosellia");
-  for(const t of ["leads","lead_events","followups","bookings","booking_events","room_allocations","payments","profiles","settings"])
+  for(const t of ["leads","lead_events","followups","bookings","booking_events","room_allocations","payments","booking_charges","edit_permits","profiles","settings"])
     ch=ch.on("postgres_changes",{event:"*",schema:"public",table:t},hit);
   rtChannel=ch.subscribe();
 }
@@ -425,10 +439,11 @@ function softRender(){if(modalOpen()||["leadform","settings","log","promo"].incl
 async function refresh(){await loadData();renderView(true);}
 
 /* ---------- navigation ---------- */
-const VIEWS={home:renderHome,promo:renderPromo,log:renderLog,repeat:renderRepeat,leadform:renderLeadForm,leads:renderLeads,lead:renderLead,followups:renderFollowups,bookings:renderBookings,
+const VIEWS={home:renderHome,permits:renderPermits,promo:renderPromo,log:renderLog,repeat:renderRepeat,leadform:renderLeadForm,leads:renderLeads,lead:renderLead,followups:renderFollowups,bookings:renderBookings,
   booking:renderBooking,calendar:renderCalendar,rooms:renderRooms,reports:renderReports,team:renderTeam,settings:renderSettings};
-function renderView(keepScroll){$("backBtn").classList.toggle("hide",view==="home");
-  $("userChip").textContent=view==="home"?(me.name||"Me")+" · "+me.role.toUpperCase():(me.name||"Me").split(" ")[0];
+function renderView(keepScroll){if(!canView(view)){view="home";viewArg=null;}
+  $("backBtn").classList.toggle("hide",view==="home");
+  $("userChip").textContent=view==="home"?(me.name||"Me")+" · "+(ROLE_LABEL[me.role]||me.role).split(" (")[0].toUpperCase():(me.name||"Me").split(" ")[0];
   $("hdrTitle").style.fontSize=view==="home"?"":"20px";if(!keepScroll)window.scrollTo(0,0);(VIEWS[view]||renderHome)();}
 /* long lists draw 50 at a time so screens open instantly */
 let LIM=50;
@@ -457,32 +472,37 @@ function renderHome(){
   const unassigned=active.filter(l=>!l.assigned_to);
   const pastDue=bookings.filter(b=>!["CANCELLED","EVENT COMPLETED"].includes(b.status)&&((b.booking_events||[]).length?(b.booking_events||[]).every(e=>e.event_date<T()):bkRooms(b).length>0&&bkRooms(b).every(r=>r.check_out<=T())));
   const dues=dueBookings(0),review=reviewLeads(),repSoon=repeatList().filter(r=>r.days<=45&&!r.done),bAge=backupAge();
+  const ops=isOps(),pendPermits=PERMITS.filter(p=>p.status==="PENDING"),myPermits=PERMITS.filter(p=>p.requested_by===me.id&&permitLive(p));
   const mods=[
     ["leadform","plus","rose","New Lead","Register an enquiry",0],
-    ["leads","users","purple","Leads","Active, lost, all",active.length],
-    ["followups","clock","amber","Follow-ups","Today, overdue, missed",fb.today.length+fb.overdue.length+fb.missed.length],
-    ["bookings","star","gold","Bookings","Payments and status",await_.length],
+    ...(ops?[]:[["leads","users","purple","Leads","Active, lost, all",active.length],
+      ["followups","clock","amber","Follow-ups","Today, overdue, missed",fb.today.length+fb.overdue.length+fb.missed.length]]),
+    ["bookings","star","gold","Bookings",ops?"View and collect payments":"Payments and status",await_.length],
     ["calendar","cal","blue","Hall Calendar","King and Queen availability",0],
     ["rooms","bed","green","Suite Rooms","9 rooms by check-in date",0],
-    ["repeat","star","amber","Repeat Customers","Birthdays and anniversaries",repSoon.length],
-    ["menus","list","rose","Menus","View or share menu PDFs",0]];
-  if(isAdmin())mods.push(["promo","chat","green","Promotion","All customer contacts",0],["reports","chart","purple","Reports","Sources and conversion",0],
-    ["log","clock","blue","Activity Log","Who changed or deleted what",0],["backup","file","amber","Backup",bAge==null?"Never taken":bAge===0?"Taken today":"Last: "+bAge+" day"+(bAge>1?"s":"")+" ago",0],
-    ["settings","gear","gold","Settings","Business, bank, Telegram",0]);
-  if(isOwner())mods.push(["team","users","rose","Team","Staff and powers",0]);
+    ...(ops?[]:[["repeat","star","amber","Repeat Customers","Birthdays and anniversaries",repSoon.length],
+      ["menus","list","rose","Menus","View or share menu PDFs",0]])];
+  if(canData())mods.push(["promo","chat","green","Promotion","All customer contacts",0]);
+  if(isAdmin())mods.push(["reports","chart","purple","Reports","Sources and conversion",0]);
+  if(canData())mods.push(["log","clock","blue","Activity Log","Who changed or deleted what",0],
+    ["backup","file","amber","Backup",!isAdmin()?"Download Excel":bAge==null?"Never taken":bAge===0?"Taken today":"Last: "+bAge+" day"+(bAge>1?"s":"")+" ago",0]);
+  if(isAdmin())mods.push(["permits","check","green","Edit Requests","Permit staff to edit",pendPermits.length],["settings","gear","gold","Settings","Business, bank, Telegram",0]);
+  if(isOwner())mods.push(["team","users","rose","Team","Users and roles",0]);
   app.innerHTML=`<div class="page">
     <div class="sub" style="margin:2px 2px 10px">Namaste ${esc(me.name)}. ${new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</div>
-    ${fb.missed.length?`<div class="notif glass n-red" onclick="fuTab='missed';nav('followups')">${icn("alert")}<span>${fb.missed.length} missed follow-up${fb.missed.length>1?"s":""} (3+ days late)</span></div>`:""}
-    ${fb.overdue.length?`<div class="notif glass n-red" onclick="fuTab='overdue';nav('followups')">${icn("clock")}<span>${fb.overdue.length} overdue follow-up${fb.overdue.length>1?"s":""}</span></div>`:""}
-    ${fb.today.length?`<div class="notif glass n-amber" onclick="fuTab='today';nav('followups')">${icn("phone")}<span>${fb.today.length} lead${fb.today.length>1?"s":""} to call today</span></div>`:""}
+    ${isAdmin()&&pendPermits.length?`<div class="notif glass n-red" onclick="nav('permits')">${icn("check")}<span>${pendPermits.length} edit permission request${pendPermits.length>1?"s":""} waiting for you</span></div>`:""}
+    ${myPermits.map(p=>`<div class="notif glass n-green" onclick="openPermitTarget('${p.entity}','${p.entity_id}')">${icn("check")}<span>Owner permitted editing ${esc(p.ref||"")} until ${fmtDT(p.expires_at)}</span></div>`).join("")}
+    ${!ops&&fb.missed.length?`<div class="notif glass n-red" onclick="fuTab='missed';nav('followups')">${icn("alert")}<span>${fb.missed.length} missed follow-up${fb.missed.length>1?"s":""} (3+ days late)</span></div>`:""}
+    ${!ops&&fb.overdue.length?`<div class="notif glass n-red" onclick="fuTab='overdue';nav('followups')">${icn("clock")}<span>${fb.overdue.length} overdue follow-up${fb.overdue.length>1?"s":""}</span></div>`:""}
+    ${!ops&&fb.today.length?`<div class="notif glass n-amber" onclick="fuTab='today';nav('followups')">${icn("phone")}<span>${fb.today.length} lead${fb.today.length>1?"s":""} to call today</span></div>`:""}
     ${dues.length?`<div class="notif glass n-red" onclick="bkTab='DUE';nav('bookings')">${icn("alert")}<span>${dues.length} payment${dues.length>1?"s":""} due: ${inr(dues.reduce((s,x)=>s+x.d.amount,0))}</span></div>`:""}
-    ${review.length?`<div class="notif glass n-amber" onclick="leadsTab='REVIEW';nav('leads')">${icn("x")}<span>${review.length} lead${review.length>1?"s":""} may be lost: please review</span></div>`:""}
-    ${repSoon.length?`<div class="notif glass n-blue" onclick="repTab='SOON';nav('repeat')">${icn("star")}<span>${repSoon.length} repeat customer${repSoon.length>1?"s":""}: birthday or anniversary within 45 days</span></div>`:""}
+    ${!ops&&review.length?`<div class="notif glass n-amber" onclick="leadsTab='REVIEW';nav('leads')">${icn("x")}<span>${review.length} lead${review.length>1?"s":""} may be lost: please review</span></div>`:""}
+    ${!ops&&repSoon.length?`<div class="notif glass n-blue" onclick="repTab='SOON';nav('repeat')">${icn("star")}<span>${repSoon.length} repeat customer${repSoon.length>1?"s":""}: birthday or anniversary within 45 days</span></div>`:""}
     ${isAdmin()&&(bAge==null||bAge>=10)?`<div class="notif glass n-amber" onclick="doBackup()">${icn("file")}<span>${bAge==null?"No data backup taken yet":"Last data backup was "+bAge+" days ago"}: tap to download Excel backup</span></div>`:""}
     ${await_.length?`<div class="notif glass n-blue" onclick="bkTab='AWAITING ADVANCE';nav('bookings')">${icn("star")}<span>${await_.length} booking${await_.length>1?"s":""} awaiting advance</span></div>`:""}
-    ${isAdmin()&&unassigned.length?`<div class="notif glass n-amber" onclick="nav('leads')">${icn("users")}<span>${unassigned.length} lead${unassigned.length>1?"s":""} not assigned to anyone</span></div>`:""}
+    ${canData()&&unassigned.length?`<div class="notif glass n-amber" onclick="nav('leads')">${icn("users")}<span>${unassigned.length} lead${unassigned.length>1?"s":""} not assigned to anyone</span></div>`:""}
     ${pastDue.length&&hasPower("bookings")?`<div class="notif glass n-green" onclick="bkTab='LIVE';nav('bookings')">${icn("check")}<span>${pastDue.length} event${pastDue.length>1?"s are":" is"} over: mark as completed</span></div>`:""}
-    <div class="stats">
+    <div class="stats ${ops?"hide":""}">
       <div class="stat glass"><b>${active.length}</b><span>Active leads</span></div>
       <div class="stat glass"><b>${fb.today.length+fb.overdue.length+fb.missed.length}</b><span>Calls due</span></div>
       <div class="stat glass"><b>${liveB.length}</b><span>Bookings</span></div>
@@ -501,11 +521,11 @@ function renderHome(){
 let LF=null;
 const blankEvent=()=>({event_type:"",other:"",event_date:"",tbd:false,session:"DINNER",guests:"",venue:"",menu:"",rooms:"",menuFiles:[]});
 function newLead(prefillDate){
-  LF={id:null,customer_name:"",mobile:"",alt_mobile:"",source:"",assigned_to:me.id,offered_price:"",remarks:"",next_followup:"",nfManual:false,
+  LF={id:null,customer_name:"",mobile:"",alt_mobile:"",source:"",assigned_to:isOps()?"":me.id,offered_price:"",remarks:"",next_followup:"",nfManual:false,
       events:[blankEvent()],dupHtml:"",files:[],attKind:"VISITING CARD",extras:{}};
   if(prefillDate)LF.events[0].event_date=prefillDate;
   nav("leadform");}
-function editLead(id){const l=leadById(id);if(!l)return;
+function editLead(id){const l=leadById(id);if(!l)return;if(!guardEdit("lead",id))return;
   LF={id:l.id,lead_no:l.lead_no,customer_name:l.customer_name,mobile:l.mobile,alt_mobile:l.alt_mobile||"",source:l.source,assigned_to:l.assigned_to||"",
       offered_price:l.offered_price??"",remarks:l.remarks||"",next_followup:l.next_followup||"",nfManual:true,dupHtml:"",files:[],attKind:"SCREENSHOT",extras:{...(l.extras||{})},
       events:(l.lead_events||[]).map(e=>{const known=EVENT_TYPES.includes(e.event_type);
@@ -543,7 +563,7 @@ function renderLeadForm(){
     <div><label>Alternate number</label><input id="lfAlt" inputmode="numeric" maxlength="14" value="${esc(f.alt_mobile)}"></div></div>
     <div id="lfDupBox">${f.dupHtml}</div>
     <div class="g2"><div><label>Lead source <b>*</b></label><select id="lfSrc">${opts(SOURCES,f.source,"Select source")}</select></div>
-    <div><label>Assigned to</label>${hasPower("see_all")?`<select id="lfAsg">${opts(profiles.filter(p=>p.active).map(p=>[p.id,p.name||p.email]),f.assigned_to,"Unassigned")}</select>`:`<input value="${esc(me.name)}" disabled>`}</div></div>
+    <div><label>Assigned to</label>${hasPower("see_all")?`<select id="lfAsg">${opts(profiles.filter(p=>p.active).map(p=>[p.id,p.name||p.email]),f.assigned_to,"Unassigned")}</select>`:`<input value="${isOps()?"Sales team will assign":esc(me.name)}" disabled>`}</div></div>
    </div>
    ${f.events.map((e,i)=>`<div class="card glass">
     <div class="row"><div class="sec" style="margin:0">Event ${f.events.length>1?i+1:""} details</div><div class="sp"></div>
@@ -605,7 +625,9 @@ async function saveLead(){
     if(!f.id)await sb.from("followups").insert({lead_id:lead.id,kind:"SYSTEM",note:"Lead registered. Source: "+cap(f.source),by_name:me.name});
     await loadData();
     const wasNew=!f.id;LF=null;
-    history.replaceState({t:"view",v:"lead",arg:lead.id},"","#lead");view="lead";viewArg=lead.id;renderView();
+    if(isOps()){history.replaceState(null,"",location.pathname+location.search);view="home";viewArg=null;}
+    else{history.replaceState({t:"view",v:"lead",arg:lead.id},"","#lead");view="lead";viewArg=lead.id;}
+    renderView();
     if(wasNew)showSaved(lead.id);else toast("Lead updated");
   }catch(err){toast(err.message||"Could not save");}
   finally{unlock();}
@@ -637,7 +659,7 @@ function showSaved(id){const l=leadById(id);if(!l)return;
     <div class="sec">Events</div>${(l.lead_events||[]).map(e=>evRow(e)).join("")}
     <div class="btnrow">${waA(waNums(l),greet,icn("chat",16)+" WhatsApp greeting","btn btn-green")}
       <button class="btn" onclick="closeModal();setTimeout(()=>newLead(),60)">${icn("plus",16)} Another lead</button>
-      <button class="btn btn-rose" onclick="closeModal()">Open lead</button></div>`);
+      <button class="btn btn-rose" onclick="closeModal()">${isOps()?"Done":"Open lead"}</button></div>`);
 }
 
 /* ---------- uploads ---------- */
@@ -743,7 +765,7 @@ async function renderLead(){
       <div class="btnrow">
         ${hasPower("convert")?`<button class="btn btn-green" onclick="openConvert('${l.id}')">${icn("check",16)} Convert to booking</button>`:""}
         <button class="btn btn-red" onclick="lostModal('${l.id}')">${icn("x",16)} Mark lost</button>
-        <button class="btn" onclick="editLead('${l.id}')">Edit</button></div>`
+        <button class="btn" onclick="editLead('${l.id}')">${canEditNow("lead",l.id)?"Edit":"Edit (ask owner)"}</button></div>${permitNote("lead",l.id)}`
      :l.status==="LOST"?`<div class="btnrow"><button class="btn btn-gold" onclick="reopenLead('${l.id}')">Reopen this lead</button></div>`
      :bk?`<div class="btnrow"><button class="btn btn-green" onclick="nav('booking','${bk.id}')">${icn("star",16)} Open booking</button></div>`:""}
     <div class="sec">Quotations sent</div><div id="ldQ"><div class="sub" style="margin:0 2px 10px">Loading</div></div>
@@ -855,7 +877,7 @@ function openConvert(id){const l=leadById(id);if(!l)return;
   BF={mode:"convert",lead:l,extras:{...(l.extras||{})},booking_date:T(),total:l.offered_price??"",notes:l.expectations||"",advance:"",adv_mode:"CASH",events:evs.length?evs:[{event_type:"",event_date:"",session:"DINNER",hall:"",guests:"",menu:""}],
       ci:dates.length?addDays(dates[0],need?-1:0):"",co:dates.length?addDays(dates[dates.length-1],1):"",rooms:new Set(),need,autoPick:need>0};
   renderBF();}
-function openEditBooking(id){const b=bkById(id);if(!b)return;
+function openEditBooking(id){const b=bkById(id);if(!b)return;if(!guardEdit("booking",id))return;
   BF={mode:"edit",booking:b,extras:{...(b.extras||{})},booking_date:b.booking_date,total:b.total_amount-chargeSum(b),notes:b.custom_notes||"",
       events:(b.booking_events||[]).filter(e=>e.active).map(e=>({id:e.id,event_type:e.event_type,event_date:e.event_date,session:e.session,hall:e.hall,guests:e.guests??"",menu:e.menu||""}))};
   renderBF();}
@@ -1008,7 +1030,7 @@ function renderBooking(){
         ${nums[1]?`<a class="btn" href="tel:+91${nums[1]}">${icn("phone",16)} ${nums[1]}</a>`:""}
         ${waA(nums,bookingText(b),icn("chat",16)+" WhatsApp details","btn btn-green")}
         <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} PDF / Print</button>
-        <button class="btn" onclick="menuFor('B','${b.id}')">${icn("list",16)} Send menu</button></div>
+        ${isOps()?"":`<button class="btn" onclick="menuFor('B','${b.id}')">${icn("list",16)} Send menu</button>`}</div>
       <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
         <div class="stat glass"><b>${inr(b.total_amount)}</b><span>${chgSum?"Total amount":"Booking amount"}</span></div>
         <div class="stat glass"><b style="color:var(--green)">${inr(b.paid_amount)}</b><span>Received</span></div>
@@ -1024,7 +1046,7 @@ function renderBooking(){
     ${isRoomOnly(b)?`<div class="hint h-green" style="margin-bottom:6px">${icn("bed",15)} Room booking only (no hall event)</div>`
       :`<div class="sec">Events</div>${(b.booking_events||[]).map(e=>evCard(e)).join("")}<div class="sec">Requirements</div>${extrasView(b.extras)}`}
     ${b.custom_notes?`<div class="card glass"><div class="sub">Custom requirements</div><div style="white-space:pre-wrap;margin-top:4px">${esc(b.custom_notes)}</div></div>`:""}
-    ${b.lead_id?`<div id="bkQ"></div>`:""}
+    ${b.lead_id&&!isOps()?`<div id="bkQ"></div>`:""}
     <div class="sec">Suite rooms (${rooms.length})</div>
     ${rooms.length?rooms.map(r=>`<div class="card glass"><div class="row"><span class="title">Suite ${r.room_no}</span><div class="sp"></div>
       <span class="sub">${fmtD(r.check_in)} to ${fmtD(r.check_out)} · ${diff(r.check_in,r.check_out)} night${diff(r.check_in,r.check_out)>1?"s":""}</span>
@@ -1043,12 +1065,13 @@ function renderBooking(){
       <div class="meta">${esc(p.note||"")}${p.by_name?" · entered by "+esc(p.by_name):""}</div></div>`).join(""):`<div class="sub" style="margin:0 2px 10px">No payment received yet.</div>`}
     <div class="btnrow">
       ${canPay&&bal>0?`<button class="btn btn-green" onclick="payModal('${b.id}')">${icn("plus",16)} Record payment</button>`:""}
-      ${canEdit?`<button class="btn" onclick="${isRoomOnly(b)?"roomEditModal":"openEditBooking"}('${b.id}')">Edit booking</button>`:""}</div>
+      ${canEdit?`<button class="btn" onclick="${isRoomOnly(b)?"roomEditModal":"openEditBooking"}('${b.id}')">${canEditNow("booking",b.id)?"Edit booking":"Edit booking (ask owner)"}</button>`:""}</div>
+    ${canEdit?permitNote("booking",b.id):""}
     ${canEdit&&b.status!=="EVENT COMPLETED"&&!okDone?`<div class="hint h-amber" style="margin-top:12px">${isRoomOnly(b)?"Check-out":"Event completed"} can be marked only on or after ${fmtD(completeFrom(b))}.</div>`:""}
     <div class="btnrow">
       ${canEdit&&b.status!=="EVENT COMPLETED"&&okDone?`<button class="btn btn-gold" onclick="setBkStatus('${b.id}','EVENT COMPLETED')">${icn("check",16)} ${isRoomOnly(b)?"Mark checked out":"Mark event completed"}</button>`:""}
-      ${b.status==="EVENT COMPLETED"?`<button class="btn btn-gold" onclick="askReview('${b.id}')">${icn("star",16)} Ask for Google review</button>`:""}
-      ${b.lead_id&&leadById(b.lead_id)?`<button class="btn" onclick="nav('lead','${b.lead_id}')">Lead history</button>`:""}
+      ${b.status==="EVENT COMPLETED"&&!isOps()?`<button class="btn btn-gold" onclick="askReview('${b.id}')">${icn("star",16)} Ask for Google review</button>`:""}
+      ${b.lead_id&&leadById(b.lead_id)&&!isOps()?`<button class="btn" onclick="nav('lead','${b.lead_id}')">Lead history</button>`:""}
       ${isAdmin()&&b.status!=="CANCELLED"?`<button class="btn" style="color:var(--red)" onclick="cancelBooking('${b.id}')">Cancel booking</button>`:""}</div>
   </div>`;
   if(b.lead_id)loadQuotes(b.lead_id).then(qs=>{if(view!=="booking"||viewArg!==b.id||!$("bkQ")||!qs.length)return;
@@ -1116,7 +1139,8 @@ async function saveRM(){rmRead();if(!RM.sel.size)return toast("Select at least o
   try{for(const n of [...RM.sel].sort((a,b)=>a-b)){const {error}=await sb.rpc("allocate_room",{p_booking:RM.id,p_room:n,p_in:RM.ci,p_out:RM.co,p_guest:RM.guest.trim()});if(error)throw error;}
     closeModal();await refresh();toast("Rooms allocated");}
   catch(e){toast(e.message);await loadData();renderRM();}finally{unlock();}}
-async function releaseRoom(rid){if(!confirm("Release this room from the booking?"))return;
+async function releaseRoom(rid){const rb=bookings.find(b=>(b.room_allocations||[]).some(r=>r.id===rid));if(rb&&!guardEdit("booking",rb.id))return;
+  if(!confirm("Release this room from the booking?"))return;
   const {error}=await sb.from("room_allocations").update({active:false}).eq("id",rid);if(error)toast(error.message);await refresh();}
 
 /* ================= QUOTATION + PDF ================= */
@@ -1151,8 +1175,8 @@ function openQuote(qid,fresh){const q=QCACHE[qid];if(!q)return false;
   if(!window.jspdf){toast("PDF tool is still loading. Check internet and try again.");return false;}
   const o=q.snapshot,x={price:q.price,valid:q.valid_days||7,note:q.note||"",date:iso(new Date(q.created_at)),qref:qRef(q)};
   let blob;try{blob=buildPDF("QUOTE",o,x);}catch(e){toast("PDF error: "+e.message);return false;}
-  const fname=`Rosellia-Quotation-${o.lead_no}-Q${q.q_no}.pdf`;
-  const text=`Namaste ${o.customer_name} ji,\nPlease find the quotation ${qRef(q)} from ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}.\nOffered price: ${inr(q.price)}\nValid for ${x.valid} days.`;
+  const fname=`Rosellia-Estimate-${o.lead_no}-Q${q.q_no}.pdf`;
+  const text=`Namaste ${o.customer_name} ji,\nPlease find the estimate ${qRef(q)} from ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}.\nEstimated price: ${inr(q.price)}\nValid for ${x.valid} days.`;
   PDFJOB={file:new File([blob],fname,{type:"application/pdf"}),fname};
   sendFileModal(fresh?"Quotation ready":"Quotation Q"+q.q_no,o.customer_name,waNums(o),text,"PDF");return true;}
 function quoteCards(list){return list.length?list.map((q,i)=>`<div class="card glass"><div class="row wrap"><span class="chip ch-gold" style="font-size:12px">Q${q.q_no}</span>
@@ -1186,9 +1210,9 @@ function drawPDF(kind,o,x,s){
   const evs=kind==="QUOTE"?(o.lead_events||[]):(o.booking_events||[]).filter(e=>e.active);
   const roomOnly=kind==="BOOKING"&&!evs.length;
   let y=H+g(9.5);doc.setTextColor(110,32,58);doc.setFont("times","bold");fs(15.5);
-  doc.text(kind==="QUOTE"?"QUOTATION":roomOnly?"ROOM BOOKING CONFIRMATION":"BOOKING CONFIRMATION",M,y);
+  doc.text(kind==="QUOTE"?"ESTIMATE":roomOnly?"ROOM BOOKING ESTIMATE":"BOOKING ESTIMATE",M,y);
   doc.setFont("helvetica","normal");fs(8.8);doc.setTextColor(60,60,60);
-  const refs=kind==="QUOTE"?["Quotation No: "+(x.qref||o.lead_no),"Date: "+fmtD(x.date||T())]
+  const refs=kind==="QUOTE"?["Estimate No: "+(x.qref||o.lead_no),"Date: "+fmtD(x.date||T())]
     :["Booking No: "+o.booking_no+(o.lead_no?"     Lead Ref: "+o.lead_no:""),"Booking date: "+fmtD(o.booking_date)];
   refs.forEach((t,i)=>doc.text(t,W-M,y-g(3.4)+i*g(4.1),{align:"right"}));
   y+=g(3.6);doc.setDrawColor(220,205,190);doc.line(M,y,W-M,y);y+=g(5.6);
@@ -1209,10 +1233,10 @@ function drawPDF(kind,o,x,s){
       didParseCell:d=>{if(d.section==="body"&&d.column.index%2===1){if(d.cell.raw==="Yes")d.cell.styles.textColor=[20,120,60];if(d.cell.raw==="No")d.cell.styles.textColor=[190,40,40];}}});}
   /* right: amounts. left: payments or notes. */
   const RW=80,y0=y;let amt;
-  if(kind==="QUOTE")amt=[["Offered price",rs(x.price)]];
+  if(kind==="QUOTE")amt=[["Estimated price",rs(x.price)]];
   else{const ch=o.booking_charges||[],cs=ch.reduce((a,c)=>a+ +c.amount,0);
-    amt=[["Booking amount",rs(o.total_amount-cs)],...ch.map(c=>["Extra: "+ascii(c.remark).slice(0,34),rs(c.amount)])];
-    if(ch.length)amt.push(["Total amount",rs(o.total_amount)]);
+    amt=[["Estimated amount",rs(o.total_amount-cs)],...ch.map(c=>["Extra: "+ascii(c.remark).slice(0,34),rs(c.amount)])];
+    if(ch.length)amt.push(["Total estimate",rs(o.total_amount)]);
     amt.push(["Amount received",rs(o.paid_amount)],["Balance payable",rs(Math.max(o.total_amount-o.paid_amount,0))]);}
   doc.autoTable({startY:y0,margin:{left:W-M-RW,right:M},theme:"grid",styles:{...st,fontSize:9.2*s},body:amt,
     columnStyles:{0:{cellWidth:RW-31},1:{halign:"right",fontStyle:"bold"}},
@@ -1229,7 +1253,7 @@ function drawPDF(kind,o,x,s){
   if(kind==="BOOKING"){const pays=o.payments||[];
     if(pays.length)para("PAYMENTS RECEIVED",pays.map(p=>fmtD(p.paid_on)+"   "+rs(p.amount)+"   "+p.mode+(p.note?"   "+p.note:"")).join("\n"),LW);
     const pl=payPlan(o);if(pl.length)para("PAYMENT SCHEDULE",pl.map(m=>m.label+":  "+rs(m.need)+"  by "+fmtD(m.date)).join("\n"),LW);
-  }else{para("INCLUDED / NOTES",x.note,LW);para("VALIDITY","Valid for "+x.valid+" days from the date above. The date is held only after advance payment.",LW);}
+  }else{para("INCLUDED / NOTES",x.note,LW);para("VALIDITY","This estimate is valid for "+x.valid+" days from the date above. The date is held only after advance payment.",LW);}
   y=Math.max(y,yR+g(4.6));
   const bank=bankLines(),showPay=(bank.length||QR)&&(kind==="QUOTE"||o.total_amount-o.paid_amount>0.5);
   if(showPay){const q=QR?g(21):0,yb=y;
@@ -1251,7 +1275,7 @@ function sharePDF(kind,id){
   if(!window.jspdf){toast("PDF tool is still loading. Check internet and try again.");return false;}
   const o=bkById(id);if(!o)return false;
   let blob;try{blob=buildPDF("BOOKING",o,{});}catch(e){toast("PDF error: "+e.message);return false;}
-  const fname=`Rosellia-Booking-${o.booking_no}.pdf`;
+  const fname=`Rosellia-Booking-Estimate-${o.booking_no}.pdf`;
   PDFJOB={file:new File([blob],fname,{type:"application/pdf"}),fname};
   sendFileModal("Booking PDF ready",o.customer_name,waNums(o),bookingText(o),"PDF");
   return true;
@@ -1470,7 +1494,7 @@ function writeXlsx(sheets,fname){const wb=XLSX.utils.book_new();
   XLSX.writeFile(wb,fname);}
 /* Full backup: every lead, event, follow-up, quotation, booking, room, payment, extra charge, file name, team member and log entry */
 async function doBackup(){
-  if(!isAdmin())return toast("Only owner or manager can take a backup");
+  if(!canData())return toast("You are not allowed to take a backup");
   if(lock())return;toast("Preparing backup");
   try{
     await needXLSX();
@@ -1498,8 +1522,7 @@ async function doBackup(){
       "Activity log":lg.map(x=>({"When":dtt(x.at),"User":x.by_name||"","Action":x.action,"Item":x.entity,"Reference":x.ref||"","Details":x.summary||""})),
       "Business settings":Object.entries(BIZ).filter(([k])=>k!=="qr_path").map(([k,v])=>({"Setting":k.replace(/_/g," "),"Value":String(v??"")}))};
     writeXlsx(sheets,`Rosellia-Backup-${T()}.xlsx`);
-    BACKUP={at:T(),by:me.name};
-    const r=await sb.from("settings").upsert({key:"backup",value:BACKUP});if(r.error)toast(r.error.message);
+    if(isAdmin()){BACKUP={at:T(),by:me.name};const r=await sb.from("settings").upsert({key:"backup",value:BACKUP});if(r.error)toast(r.error.message);}
     toast("Backup downloaded: "+leads.length+" leads, "+bookings.length+" bookings");
     if(view==="home"||view==="settings")renderView(true);
   }catch(e){toast(e.message||"Backup failed");}finally{unlock();}
@@ -1545,7 +1568,7 @@ async function saveRB(){rbRead();const f=RB;
     view="booking";viewArg=data;renderView();confirmedModal(data);
   }catch(e){toast(/book_rooms/.test(e.message||"")?"Run update-v7.sql in Supabase first":(e.message||"Could not save"));await loadData();if(RB)renderRB();}
   finally{unlock();}}
-function roomEditModal(id){const b=bkById(id);
+function roomEditModal(id){const b=bkById(id);if(!b||!guardEdit("booking",id))return;
   modal(`<h2>Edit room booking</h2><p class="sub">${esc(b.booking_no)}. To change rooms or dates, use Release and Allocate rooms on the booking page.</p>
     <div class="g2"><div><label>Guest name <b>*</b></label><input id="reName" value="${esc(b.customer_name)}"></div>
     <div><label>Mobile number <b>*</b></label><input id="reMob" inputmode="numeric" maxlength="14" value="${esc(b.mobile)}"></div></div>
@@ -1619,7 +1642,7 @@ function promoMsg(c){let m="";try{m=localStorage.getItem("rosellia_promo")||"";}
   return (m||"Namaste {name} ji,\nGreetings from "+cap(BIZ.name||"Rosellia")+" "+(BIZ.tagline||"Banquets & Suites")+".").replace(/\{name\}/gi,c?c.name:"{name}");}
 function renderPromo(){
   $("hdrTitle").textContent="Promotion";
-  if(!isAdmin()){app.innerHTML=`<div class="empty">Owner and manager only</div>`;return;}
+  if(!canData()){app.innerHTML=`<div class="empty">Not available for your login</div>`;return;}
   const all=promoContacts(),list=promoList(),types=[...new Set(all.flatMap(c=>[...c.types]))].sort();
   const TC={ACTIVE:"ch-blue",LOST:"ch-red",BOOKED:"ch-purple",COMPLETED:"ch-green",CANCELLED:"ch-gray",ROOM:"ch-gold"},TL=Object.fromEntries(PROMO_TABS);
   app.innerHTML=`<div class="page">
@@ -1651,7 +1674,7 @@ async function promoExcel(){const list=promoList();if(!list.length)return toast(
 let LOGS=[],logMore=false,logUser="",logAct="",logQ="";
 async function renderLog(){
   $("hdrTitle").textContent="Activity Log";
-  if(!isAdmin()){app.innerHTML=`<div class="empty">Owner and manager only</div>`;return;}
+  if(!canData()){app.innerHTML=`<div class="empty">Not available for your login</div>`;return;}
   app.innerHTML=`<div class="spin"></div>`;await logLoad(true);if(view==="log")drawLog();}
 async function logLoad(reset){const from=reset?0:LOGS.length;
   const {data,error}=await sb.from("audit_log").select("*").order("id",{ascending:false}).range(from,from+199);
@@ -1672,6 +1695,80 @@ function drawLog(){const q=logQ.trim().toLowerCase(),AC={ADDED:"ch-green",CHANGE
     ${logMore?`<button class="btn btn-block" onclick="logLoad(false).then(drawLog)">Load older entries</button>`:""}
   </div>`;
 }
+
+/* ================= EDIT PERMISSION (admin, sales manager, operation manager) ================= */
+/* These roles can add anything, but changing an existing lead or booking needs the owner's Permit, valid 24 hours. */
+let PERMITS=[];
+const needsPermit=()=>isSales()||isOps();
+function permitFor(ent,id){return PERMITS.filter(p=>p.entity===ent&&p.entity_id===id&&p.requested_by===me.id).sort((a,b)=>a.created_at<b.created_at?1:-1)[0]||null;}
+const permitLive=p=>!!p&&p.status==="PERMITTED"&&new Date(p.expires_at)>new Date();
+function canEditNow(ent,id){return !needsPermit()||permitLive(permitFor(ent,id));}
+function permitNote(ent,id){if(!needsPermit())return"";const p=permitFor(ent,id);
+  if(permitLive(p))return `<div class="hint h-green">${icn("check",15)} Owner has permitted editing until ${fmtDT(p.expires_at)}.</div>`;
+  if(p&&p.status==="PENDING")return `<div class="hint h-amber">${icn("clock",15)} Edit permission requested on ${fmtDT(p.created_at)}. Waiting for the owner.</div>`;
+  if(p&&p.status==="REJECTED"&&diff(iso(new Date(p.created_at)),T())<=2)return `<div class="hint h-red">${icn("x",15)} The owner did not permit the last edit request.</div>`;
+  return "";}
+/* call before opening any edit screen. Returns true if editing may start now. */
+function guardEdit(ent,id){if(canEditNow(ent,id))return true;
+  const p=permitFor(ent,id);if(p&&p.status==="PENDING"){toast("Edit permission already requested. Waiting for the owner.");return false;}
+  const o=ent==="lead"?leadById(id):bkById(id);if(!o)return false;
+  modal(`<h2>Ask owner for edit permission</h2><p class="sub">${ent==="lead"?"Lead":"Booking"} ${esc(o.lead_no||o.booking_no)} · ${esc(o.customer_name)}. You can add new details without permission. Changing existing details needs the owner to press Permit.</p>
+    <label>What do you need to change, and why? <b>*</b></label><textarea id="prWhy" placeholder="For example: customer changed the date from 12th to 14th"></textarea>
+    <div class="btnrow"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-rose" onclick="sendPermitRequest('${ent}','${id}')">Send request to owner</button></div>`);
+  return false;}
+async function sendPermitRequest(ent,id){const why=$("prWhy").value.trim();if(!why)return toast("Write what needs to be changed");
+  const o=ent==="lead"?leadById(id):bkById(id);if(lock())return;
+  try{const {error}=await sb.from("edit_permits").insert({entity:ent,entity_id:id,ref:o.lead_no||o.booking_no,customer:o.customer_name,reason:why,requested_name:me.name});
+    if(error)throw error;closeModal();await refresh();toast("Request sent. You can edit after the owner presses Permit.");}
+  catch(e){toast(/edit_permits/.test(e.message||"")?"Run update-v9.sql in Supabase first":e.message);}finally{unlock();}}
+async function decidePermit(pid,ok){
+  const {error}=await sb.from("edit_permits").update({status:ok?"PERMITTED":"REJECTED",decided_name:me.name,decided_at:new Date().toISOString(),expires_at:ok?new Date(Date.now()+24*3600*1000).toISOString():null}).eq("id",pid);
+  if(error)return toast(error.message);toast(ok?"Permitted for 24 hours":"Request rejected");await refresh();}
+function openPermitTarget(ent,id){if(ent==="lead"?leadById(id):bkById(id))nav(ent,id);else toast("This "+ent+" is no longer available");}
+function renderPermits(){
+  $("hdrTitle").textContent="Edit Requests";
+  const pend=PERMITS.filter(p=>p.status==="PENDING"),done=PERMITS.filter(p=>p.status!=="PENDING").slice(0,40);
+  const card=p=>`<div class="card glass"><div class="row wrap"><span class="title">${p.entity==="lead"?"Lead":"Booking"} ${esc(p.ref||"")}</span>
+      ${p.status==="PENDING"?`<span class="chip ch-amber">WAITING</span>`:permitLive(p)?`<span class="chip ch-green">PERMITTED</span>`:p.status==="PERMITTED"?`<span class="chip ch-gray">PERMIT EXPIRED</span>`:`<span class="chip ch-red">REJECTED</span>`}
+      <div class="sp"></div><span class="sub">${fmtDT(p.created_at)}</span></div>
+    <div class="meta">${esc(p.customer||"")} · requested by <b>${esc(p.requested_name||"")}</b></div>
+    <div class="meta" style="color:var(--text);white-space:pre-wrap">${esc(p.reason||"")}</div>
+    ${p.status!=="PENDING"?`<div class="meta">${p.status==="PERMITTED"?"Permitted":"Rejected"} by ${esc(p.decided_name||"")} on ${fmtDT(p.decided_at)}${p.status==="PERMITTED"?" · valid until "+fmtDT(p.expires_at):""}</div>`:""}
+    <div class="btnrow">${p.status==="PENDING"?`<button class="btn btn-sm btn-green" onclick="decidePermit('${p.id}',true)">${icn("check",15)} Permit (24 hours)</button><button class="btn btn-sm btn-red" onclick="decidePermit('${p.id}',false)">Reject</button>`
+        :permitLive(p)?`<button class="btn btn-sm btn-red" onclick="decidePermit('${p.id}',false)">Withdraw permission</button>`:""}
+      <button class="btn btn-sm" onclick="openPermitTarget('${p.entity}','${p.entity_id}')">Open ${p.entity}</button></div></div>`;
+  app.innerHTML=`<div class="page">
+    <div class="sub" style="margin:0 2px 12px">Admin, Sales Manager and Operation Manager can add new things freely. To change an existing lead or booking they must ask here. Permit allows that one person to edit that one lead or booking for 24 hours.</div>
+    <div class="sec" style="margin-top:0">Waiting for you (${pend.length})</div>${pend.length?pend.map(card).join(""):`<div class="sub" style="margin:0 2px 10px">No request is waiting.</div>`}
+    ${done.length?`<div class="sec">Earlier requests</div>${done.map(card).join("")}`:""}
+  </div>`;
+}
+
+/* ================= REPORTS IN EXCEL ================= */
+async function reportsExcel(){if(!isAdmin())return;if(lock())return;
+  try{await needXLSX();
+    const now=new Date(),fyStart=(now.getMonth()>=3?now.getFullYear():now.getFullYear()-1)+"-04-01",mStart=now.getFullYear()+"-"+p2(now.getMonth()+1)+"-01";
+    const from=repRange==="FY"?fyStart:repRange==="MONTH"?mStart:"0000",label=repRange==="FY"?"This financial year":repRange==="MONTH"?"This month":"All time";
+    const L=leads.filter(l=>l.created_at.slice(0,10)>=from),B=bookings.filter(b=>b.booking_date>=from&&b.status!=="CANCELLED");
+    const conv=L.filter(l=>l.status==="CONVERTED").length,lost=L.filter(l=>l.status==="LOST").length,act=L.filter(l=>l.status==="ACTIVE").length;
+    const tot=B.reduce((s,b)=>s+ +b.total_amount,0),paid=B.reduce((s,b)=>s+ +b.paid_amount,0),pct=(a,b)=>b?Math.round(a/b*100)+"%":"0%";
+    const group=(arr,fn)=>{const m={};arr.forEach(x=>{const k=fn(x)||"NOT SET";m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);};
+    const evs=L.flatMap(l=>l.lead_events||[]),mon={};
+    const mk=d=>d.slice(5,7)+"/"+d.slice(0,4);
+    L.forEach(l=>{const k=l.created_at.slice(0,7);(mon[k]=mon[k]||{l:0,b:0,v:0,c:0}).l++;});
+    B.forEach(b=>{const k=b.booking_date.slice(0,7);const m=(mon[k]=mon[k]||{l:0,b:0,v:0,c:0});m.b++;m.v+= +b.total_amount;});
+    bookings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.paid_on>=from){const k=p.paid_on.slice(0,7);(mon[k]=mon[k]||{l:0,b:0,v:0,c:0}).c+= +p.amount;}}));
+    writeXlsx({
+      "Summary":[["Period",label],["Report date",fmtD(T())],["Leads",L.length],["Active leads",act],["Booked (converted)",conv],["Lost",lost],["Conversion",pct(conv,L.length)],
+        ["Bookings",B.length],["Booked value",tot],["Collected",paid],["Outstanding",Math.max(tot-paid,0)],["Open pipeline value",L.filter(l=>l.status==="ACTIVE").reduce((s,l)=>s+ +(l.offered_price||0),0)]].map(([a,b])=>({"Item":a,"Value":b})),
+      "Monthly":Object.keys(mon).sort().map(k=>({"Month":mk(k+"-01"),"New leads":mon[k].l,"Bookings":mon[k].b,"Booked value":mon[k].v,"Collected":mon[k].c})),
+      "Lead sources":group(L,l=>l.source).map(([k,v])=>{const c=L.filter(l=>l.source===k&&l.status==="CONVERTED").length,x=L.filter(l=>l.source===k&&l.status==="LOST").length;return {"Source":cap(k),"Leads":v,"Booked":c,"Lost":x,"Conversion":pct(c,v)};}),
+      "Lost reasons":group(L.filter(l=>l.status==="LOST"),l=>l.lost_reason).map(([k,v])=>({"Reason":cap(k),"Leads":v,"Share":pct(v,lost)})),
+      "Event types":group(evs,e=>e.event_type).map(([k,v])=>({"Event type":cap(k),"Enquiries":v,"Share":pct(v,evs.length)})),
+      "Team":group(L,l=>pname(l.assigned_to)).map(([k,v])=>{const c=L.filter(l=>pname(l.assigned_to)===k&&l.status==="CONVERTED").length,x=L.filter(l=>pname(l.assigned_to)===k&&l.status==="LOST").length;return {"Person":k,"Leads":v,"Booked":c,"Lost":x,"Conversion":pct(c,v)};}),
+      "Bookings":B.map(b=>({"Booking no":b.booking_no,"Customer":b.customer_name,"Booking date":fmtD(b.booking_date),"Status":b.status,"Total":+b.total_amount,"Received":+b.paid_amount,"Balance":Math.max(b.total_amount-b.paid_amount,0)}))
+    },`Rosellia-Report-${label.replace(/ /g,"-")}-${T()}.xlsx`);toast("Report downloaded");}
+  catch(e){toast(e.message||"Could not make the file");}finally{unlock();}}
 
 /* ================= HALL CALENDAR ================= */
 let calY=new Date().getFullYear(),calM=new Date().getMonth();
@@ -1698,7 +1795,7 @@ function renderCalendar(){
       <span><i style="background:var(--line)"></i>Free</span><span>Left box lunch, right box dinner</span><span style="color:var(--blue)">enq = open enquiries</span></div>
     <div class="sub" style="margin-top:6px">Tap any date to see who has booked and what is free.</div></div>`;
 }
-function dayModal(date){const m=dayBooked(date),q=enquiriesOn(date),taken=roomsTaken(date,addDays(date,1));
+function dayModal(date){const m=dayBooked(date),q=isOps()?[]:enquiriesOn(date),taken=roomsTaken(date,addDays(date,1));
   const slot=(k,label)=>m[k]?`<div class="card glass click" onclick="closeModal();setTimeout(()=>nav('booking','${m[k].b.id}'),60)"><div class="row"><span class="title">${label}</span><div class="sp"></div><span class="chip ch-red">BOOKED</span></div>
       <div class="meta">${esc(cap(m[k].e.event_type))} · ${esc(m[k].b.customer_name)} · ${esc(m[k].b.booking_no)}</div></div>`
     :`<div class="card glass"><div class="row"><span class="title">${label}</span><div class="sp"></div><span class="chip ch-green">FREE</span></div></div>`;
@@ -1722,7 +1819,7 @@ function renderRooms(){
   const ok=rmCi&&rmCo&&rmCo>rmCi,taken=ok?roomsTaken(rmCi,rmCo):{};
   app.innerHTML=`<div class="page">${calHead()}
     <div class="tabs"><button class="tab" onclick="history.replaceState({t:'view',v:'calendar'},'','#calendar');view='calendar';renderView(true)">Halls</button><button class="tab on">Suite rooms</button></div>
-    ${hasPower("bookings")?`<button class="btn btn-rose btn-block" style="margin-bottom:10px;padding:14px" onclick="roomBookModal()">${icn("bed",17)} Book rooms directly</button>`:""}
+    ${hasPower("rooms")?`<button class="btn btn-rose btn-block" style="margin-bottom:10px;padding:14px" onclick="roomBookModal()">${icn("bed",17)} Book rooms directly</button>`:""}
     <div class="card glass"><div class="sec" style="margin-top:0">Check room availability</div>
       <div class="g2"><div><label>Check-in</label><input type="date" value="${rmCi}" onchange="rmCi=this.value;if(!rmCo||rmCo<=rmCi)rmCo=addDays(rmCi,1);renderRooms()"></div>
       <div><label>Check-out</label><input type="date" value="${rmCo}" onchange="rmCo=this.value;renderRooms()"></div></div>
@@ -1755,6 +1852,7 @@ function renderReports(){
   const staff=group(L,l=>pname(l.assigned_to)).map(([k,v])=>{const c=L.filter(l=>pname(l.assigned_to)===k&&l.status==="CONVERTED").length;return [k,v,` leads · ${c} booked`];});
   app.innerHTML=`<div class="page">
     <div class="tabs">${[["MONTH","This month"],["FY","This financial year"],["ALL","All time"]].map(([k,l])=>`<button class="tab ${repRange===k?"on":""}" onclick="repRange='${k}';renderReports()">${l}</button>`).join("")}</div>
+    <button class="btn btn-gold btn-block" style="margin-bottom:6px" onclick="reportsExcel()">${icn("file",16)} Download this report in Excel</button>
     <div class="stats"><div class="stat glass"><b>${L.length}</b><span>Leads</span></div><div class="stat glass"><b>${conv}</b><span>Booked</span></div>
       <div class="stat glass"><b>${lost}</b><span>Lost</span></div><div class="stat glass"><b>${L.length?Math.round(conv/L.length*100):0}%</b><span>Conversion</span></div></div>
     <div class="stats" style="grid-template-columns:repeat(2,1fr)"><div class="stat glass"><b>${inr(tot)}</b><span>Booked value</span></div><div class="stat glass"><b style="color:var(--green)">${inr(paid)}</b><span>Collected</span></div>
@@ -1771,22 +1869,28 @@ function renderTeam(){
   $("hdrTitle").textContent="Team";
   if(!isOwner()){app.innerHTML=`<div class="empty">Owner only</div>`;return;}
   app.innerHTML=`<div class="page">
-    <div class="sub" style="margin-bottom:12px">To add a new login: Supabase, Authentication, Users, Add user (tick Auto Confirm). The person appears here on their own as Staff. Owner and Manager have all powers.</div>
+    <div class="card glass"><div class="sub">To add a new login: Supabase, Authentication, Users, Add user (tick Auto Confirm). The person appears here as Staff; then choose the role.</div>
+      <div class="kv" style="margin-top:10px;grid-template-columns:auto 1fr"><span>Owner</span><b style="text-align:left;font-weight:500">Everything</b>
+        <span>Admin</span><b style="text-align:left;font-weight:500">Same as Sales Manager</b>
+        <span>Sales Manager</span><b style="text-align:left;font-weight:500">Everything except Reports, Settings and Team. Cannot delete or cancel. Editing an existing lead or booking needs your Permit.</b>
+        <span>Operation Manager</span><b style="text-align:left;font-weight:500">Only: lead entry, view bookings, hall calendar, book rooms, collect payments, send QR code.</b></div></div>
     ${profiles.map(p=>`<div class="card glass">
       <div class="row"><span class="title">${esc(p.name)||"(no name)"}</span><div class="sp"></div>
-        <span class="chip ${p.role==="owner"?"ch-rose":p.role==="manager"?"ch-blue":"ch-gray"}">${p.role.toUpperCase()}</span>
+        <span class="chip ${p.role==="owner"?"ch-rose":p.role==="staff"?"ch-gray":"ch-blue"}">${(ROLE_LABEL[p.role]||p.role).split(" (")[0].toUpperCase()}</span>
         <span class="chip ${p.active?"ch-green":"ch-red"}" style="cursor:pointer" onclick="toggleActive('${p.id}')">${p.active?"ACTIVE":"OFF"}</span></div>
       <div class="sub">${esc(p.email||"")}</div>
       <div class="g2"><div><label>Name</label><input id="nm_${p.id}" value="${esc(p.name)}"></div>
       <div><label>Telegram ID</label><input id="tg_${p.id}" value="${esc(p.telegram_chat_id||"")}" placeholder="from @userinfobot" inputmode="numeric"></div></div>
       <div class="btnrow"><button class="btn btn-sm" onclick="saveMember('${p.id}')">Save name and Telegram</button></div>
-      ${p.id!==me.id?`<label>Role</label><select onchange="setRole('${p.id}',this.value)">${opts(["staff","manager","owner"],p.role)}</select>`:""}
+      ${p.id!==me.id?`<label>Role</label><select onchange="setRole('${p.id}',this.value)">${opts(["admin","sales_manager","operation_manager","owner","manager","staff"].map(r=>[r,ROLE_LABEL[r]]),p.role)}</select>`:""}
       ${p.role==="staff"?`<label>Powers</label><div class="row wrap" style="gap:6px">${POWER_DEFS.map(([k,l])=>`<button class="tab ${p.powers?.[k]?"on":""}" onclick="togglePower('${p.id}','${k}')">${l}</button>`).join("")}</div>`:""}
     </div>`).join("")}</div>`;
 }
 async function profUpdate(id,patch,msg){const {error}=await sb.from("profiles").update(patch).eq("id",id);if(error)return toast(error.message);await loadData();if(msg)toast(msg);renderTeam();}
 const saveMember=id=>profUpdate(id,{name:$("nm_"+id).value.trim(),telegram_chat_id:$("tg_"+id).value.trim()||null},"Saved");
-const setRole=(id,role)=>profUpdate(id,{role},"Role updated");
+const setRole=async(id,role)=>{const {error}=await sb.from("profiles").update({role}).eq("id",id);
+  if(error){toast(/profiles_role_check/.test(error.message)?"Run update-v9.sql in Supabase first":error.message);return renderTeam();}
+  await loadData();toast("Role updated");renderTeam();};
 function togglePower(id,k){const p=profiles.find(x=>x.id===id);profUpdate(id,{powers:{...(p.powers||{}),[k]:!p.powers?.[k]}});}
 function toggleActive(id){const p=profiles.find(x=>x.id===id);if(p.id===me.id)return toast("You cannot switch yourself off");profUpdate(id,{active:!p.active});}
 
