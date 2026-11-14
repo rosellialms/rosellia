@@ -222,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "9";
+const APP_VERSION = "10";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -1225,7 +1225,7 @@ function drawPDF(kind,o,x,s){
   if(kind==="BOOKING"){const rooms=(o.room_allocations||[]).filter(r=>r.active);
     if(rooms.length)tbl({head:[["Suite room","Check-in","Check-out","Nights"]],body:rooms.map(r=>["Suite "+r.room_no,fmtD(r.check_in),fmtD(r.check_out),diff(r.check_in,r.check_out)])});
   }else{const rr=evs.reduce((a,e)=>Math.max(a,e.rooms||0),0);if(rr){fs(9);doc.setTextColor(40,40,40);doc.text("Suite rooms requested: "+rr,M,y+g(1.6));y+=g(5.6);}}
-  if(extrasAny(o.extras)){const xe=o.extras,cells=EXTRAS.map(([k,l])=>[l,xe[k]==="YES"?"Yes":xe[k]==="NO"?"No":"-"]),body=[],N=4;
+  if(extrasAny(o.extras)){const xe=o.extras,cells=EXTRAS.filter(([k])=>xe[k]==="YES"||xe[k]==="NO").map(([k,l])=>[l,xe[k]==="YES"?"Yes":"No"]),body=[],N=4;   /* only answered items are printed */
     for(let i=0;i<cells.length;i+=N){const row=[];for(let j=0;j<N;j++)row.push(...(cells[i+j]||["",""]));body.push(row);}
     if(xe.other)body.push([{content:"Other: "+ascii(xe.other),colSpan:N*2}]);
     const cs={};for(let j=0;j<N;j++)cs[j*2+1]={cellWidth:10.5*Math.max(s,.8),halign:"center",fontStyle:"bold"};
