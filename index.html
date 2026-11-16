@@ -222,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "10";
+const APP_VERSION = "11";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -481,7 +481,7 @@ function renderHome(){
     ["calendar","cal","blue","Hall Calendar","King and Queen availability",0],
     ["rooms","bed","green","Suite Rooms","9 rooms by check-in date",0],
     ...(ops?[]:[["repeat","star","amber","Repeat Customers","Birthdays and anniversaries",repSoon.length],
-      ["menus","list","rose","Menus","View or share menu PDFs",0]])];
+      ["menus","list","rose","Showcase & Menus","Send showcase and menu PDFs",0]])];
   if(canData())mods.push(["promo","chat","green","Promotion","All customer contacts",0]);
   if(isAdmin())mods.push(["reports","chart","purple","Reports","Sources and conversion",0]);
   if(canData())mods.push(["log","clock","blue","Activity Log","Who changed or deleted what",0],
@@ -744,7 +744,7 @@ async function renderLead(){
         <a class="btn" href="tel:+91${m10(l.mobile)}">${icn("phone",16)} ${esc(l.mobile)}</a>
         ${l.alt_mobile?`<a class="btn" href="tel:+91${m10(l.alt_mobile)}">${icn("phone",16)} ${esc(l.alt_mobile)}</a>`:""}
         ${waA(waNums(l),"",icn("chat",16)+" WhatsApp","btn btn-green")}
-        <button class="btn btn-gold" onclick="menuFor('L','${l.id}')">${icn("list",16)} Send menu</button></div>
+        <button class="btn btn-gold" onclick="menuFor('L','${l.id}')">${icn("list",16)} Send showcase / menu</button></div>
       <div class="kv" style="margin-top:14px"><span>Source</span><b>${esc(cap(l.source))}</b>
         <span>Offered price</span><b>${l.offered_price!=null?inr(l.offered_price):"Not given"}</b>
         ${l.status==="ACTIVE"?`<span>Next call</span><b>${l.next_followup?fmtD(l.next_followup):"Not set"} ${fuChip(l)}</b>`:""}
@@ -1030,7 +1030,7 @@ function renderBooking(){
         ${nums[1]?`<a class="btn" href="tel:+91${nums[1]}">${icn("phone",16)} ${nums[1]}</a>`:""}
         ${waA(nums,bookingText(b),icn("chat",16)+" WhatsApp details","btn btn-green")}
         <button class="btn btn-gold" onclick="sharePDF('BOOKING','${b.id}')">${icn("file",16)} PDF / Print</button>
-        ${isOps()?"":`<button class="btn" onclick="menuFor('B','${b.id}')">${icn("list",16)} Send menu</button>`}</div>
+        ${isOps()?"":`<button class="btn" onclick="menuFor('B','${b.id}')">${icn("list",16)} Send showcase / menu</button>`}</div>
       <div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0">
         <div class="stat glass"><b>${inr(b.total_amount)}</b><span>${chgSum?"Total amount":"Booking amount"}</span></div>
         <div class="stat glass"><b style="color:var(--green)">${inr(b.paid_amount)}</b><span>Received</span></div>
@@ -1306,7 +1306,9 @@ function pdfPrint(){if(!PDFJOB)return;const u=URL.createObjectURL(PDFJOB.file);
 
 /* ================= SEND MENU ================= */
 /* Menu PDFs sit next to index.html on GitHub. To add or replace one, upload a file with exactly this name. */
-const MENU_FILES={GOLD:"menu-gold.pdf",PEARL:"menu-pearl.pdf",SAPPHIRE:"menu-sapphire.pdf"};
+const MENU_FILES={SHOWCASE:"rosellia-showcase.pdf",GOLD:"menu-gold.pdf",PEARL:"menu-pearl.pdf",SAPPHIRE:"menu-sapphire.pdf"};
+const MENU_LABEL={SHOWCASE:"Banquet showcase",GOLD:"Gold menu",PEARL:"Pearl menu",SAPPHIRE:"Sapphire menu"};
+const menuFname=k=>k==="SHOWCASE"?"Rosellia-Banquet-and-Suites.pdf":`Rosellia-${cap(k)}-Menu.pdf`;
 const MENU_OK={},MENU_BLOB={};let MENU_TO=null;
 async function menuModal(name,mobile){
   const nums=[].concat(mobile||[]).filter(Boolean);MENU_TO=nums.length?{name,nums}:null;renderMenuModal();
@@ -1319,33 +1321,33 @@ async function menuModal(name,mobile){
 function renderMenuModal(checked){
   const to=MENU_TO,can=canShareFile(new File(["x"],"x.pdf",{type:"application/pdf"}));
   const rows=Object.keys(MENU_FILES).map(k=>{const ok=MENU_OK[k];
-    if(ok===undefined)return `<div class="card glass"><div class="title">${cap(k)} menu</div><div class="sub">${checked?"Could not check. Internet may be off.":"Checking"}</div></div>`;
-    if(!ok)return isAdmin()?`<div class="card glass"><div class="title">${cap(k)} menu</div><div class="sub">Not uploaded yet. Upload a file named ${MENU_FILES[k]} to GitHub and it will appear here.</div></div>`:"";
-    return `<div class="card glass"><div class="row"><span class="title">${cap(k)} menu</span><div class="sp"></div>
+    if(ok===undefined)return `<div class="card glass"><div class="title">${MENU_LABEL[k]}</div><div class="sub">${checked?"Could not check. Internet may be off.":"Checking"}</div></div>`;
+    if(!ok)return isAdmin()?`<div class="card glass"><div class="title">${MENU_LABEL[k]}</div><div class="sub">Not uploaded yet. Upload a file named ${MENU_FILES[k]} to GitHub and it will appear here.</div></div>`:"";
+    return `<div class="card glass"><div class="row"><span class="title">${MENU_LABEL[k]}</span><div class="sp"></div>
         ${can?`<button class="btn btn-gold btn-sm" id="mshare_${k}" onclick="menuShare('${k}')">${icn("file",15)} Send PDF</button>`
-             :`<a class="btn btn-gold btn-sm" href="${MENU_FILES[k]}" download="Rosellia-${cap(k)}-Menu.pdf">Download</a>`}
+             :`<a class="btn btn-gold btn-sm" href="${MENU_FILES[k]}" download="${menuFname(k)}">Download</a>`}
         <a class="btn btn-sm" target="_blank" rel="noopener" href="${MENU_FILES[k]}">View</a></div></div>`;}).join("");
-  const greet=to?`Namaste ${to.name} ji,\nSharing the menu of ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"} with you.`:"";
-  modal(`<h2>Send menu</h2>
+  const greet=to?`Namaste ${to.name} ji,\nSharing the details of ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"} with you.`:"";
+  modal(`<h2>Send showcase or menu</h2>
     ${to?`<p class="sub">To ${esc(to.name)} · ${to.nums.join(" / ")}</p>
       <div class="card glass" style="margin-top:12px"><div class="title">1. Open the customer's chat</div><div class="sub">So this customer comes to the top of your WhatsApp list.</div>
         <div class="btnrow">${waA(to.nums,greet,icn("chat",16)+" Open WhatsApp chat","btn btn-green")}</div></div>
-      <div class="sec">2. Send the menu PDF</div>`:`<div style="height:10px"></div>`}
+      <div class="sec">2. Send the PDF</div>`:`<div style="height:10px"></div>`}
     <div id="menuList">${rows}</div>
-    <div class="sub">${can?"Send PDF opens the share sheet: choose WhatsApp, then the customer. The real PDF file is sent.":"This browser cannot hand a file to WhatsApp. Download the menu and attach it in the chat. For one-tap sharing, open and install this app from Google Chrome."}</div>
+    <div class="sub">${can?"Send PDF opens the share sheet: choose WhatsApp, then the customer. The real PDF file is sent.":"This browser cannot hand a file to WhatsApp. Download the file and attach it in the chat. For one-tap sharing, open and install this app from Google Chrome."}</div>
     <div class="btnrow"><button class="btn btn-block" onclick="closeModal()">Done</button></div>`);
 }
 async function menuShare(k){
   const btn=$("mshare_"+k);
   if(!MENU_BLOB[k]){
-    if(btn){btn.disabled=true;btn.textContent="Preparing menu";}
+    if(btn){btn.disabled=true;btn.textContent="Preparing file";}
     try{const r=await fetch(MENU_FILES[k]);if(!r.ok)throw new Error("not found");
-      MENU_BLOB[k]=new File([await r.blob()],`Rosellia-${cap(k)}-Menu.pdf`,{type:"application/pdf"});}
-    catch(e){toast("Could not load the menu. Check internet.");if(btn){btn.disabled=false;btn.innerHTML=icn("file",15)+" Send PDF";}return;}
+      MENU_BLOB[k]=new File([await r.blob()],menuFname(k),{type:"application/pdf"});}
+    catch(e){toast("Could not load the file. Check internet.");if(btn){btn.disabled=false;btn.innerHTML=icn("file",15)+" Send PDF";}return;}
     if(btn){btn.disabled=false;btn.innerHTML=icn("file",15)+" Send PDF";}
   }
   try{await navigator.share({files:[MENU_BLOB[k]]});}
-  catch(e){if(e.name==="NotAllowedError"){if(btn)btn.innerHTML=icn("file",15)+" Ready: tap again";toast("Menu is ready. Tap the button once more.");}
+  catch(e){if(e.name==="NotAllowedError"){if(btn)btn.innerHTML=icn("file",15)+" Ready: tap again";toast("File is ready. Tap the button once more.");}
     else if(e.name!=="AbortError")toast("Sharing is not available in this browser. Use Google Chrome.");}
 }
 
