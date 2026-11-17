@@ -222,7 +222,7 @@ const SUPABASE_URL = "https://wclqqoszczptzlhdgsgn.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_cjOp4Hzfd58srMaDcfOGjw_QViw_Xgs";
 /* ========================================================================== */
 
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 const BUCKET = "rosellia";
 const HALLS = {KING:{name:"King Hall",cap:350},QUEEN:{name:"Queen Hall",cap:100},BOTH:{name:"King + Queen Hall",cap:450}};
 const ROOMS = 9;
@@ -998,7 +998,8 @@ function renderBookings(){
       <div class="row" style="margin-top:9px;font-size:12.5px"><span>Total <b>${inr(b.total_amount)}</b></span><div class="sp"></div><span>Paid <b style="color:var(--green)">${inr(b.paid_amount)}</b></span><div class="sp"></div>
         <span>Balance <b style="color:${b.total_amount-b.paid_amount>0?"var(--red)":"var(--green)"}">${inr(Math.max(b.total_amount-b.paid_amount,0))}</b></span></div>
       ${dueMap[b.id]?`<div class="row wrap" style="margin-top:9px" onclick="event.stopPropagation()">${dueChip(dueMap[b.id])}<span style="font-size:12.5px;font-weight:600">${inr(dueMap[b.id].amount)} · ${dueMap[b.id].label}</span><div class="sp"></div>
-        ${waA(waNums(b),reminderText(b,dueMap[b.id]),icn("chat",15)+" Remind","btn btn-sm btn-green")}</div>`:""}
+        ${waA(waNums(b),reminderText(b,dueMap[b.id]),icn("chat",15)+" Remind","btn btn-sm btn-green")}</div>
+      ${dueParts(dueMap[b.id]).map(x=>`<div class="meta" style="margin-top:3px">• ${x}</div>`).join("")}`:""}
     </div>`).join("")+moreBtn(list.length):`<div class="empty">${bkTab==="DUE"?"No payment is due in the next 7 days.":"No bookings here."}</div>`}
   </div>`;
 }
@@ -1039,7 +1040,8 @@ function renderBooking(){
       ${canEdit?`<label>Booking status</label><select onchange="setBkStatus('${b.id}',this.value)">${opts(BK_STATUS.filter(s=>s!=="EVENT COMPLETED"||okDone||b.status===s),b.status)}</select>
         <div class="sub" style="margin-top:6px">Status moves on its own when you record payments. Change it by hand only if needed.</div>`:""}
       ${b.status==="CANCELLED"&&b.cancel_reason?`<div class="hint h-red">Cancelled: ${esc(b.cancel_reason)}</div>`:""}
-      ${due?`<div class="hint ${due.late>=0?"h-red":"h-amber"}">${icn("alert",15)} ${due.label}: ${inr(due.amount)} ${due.late>0?"was due on "+fmtD(due.date)+" ("+due.late+" days ago)":due.late===0?"is due today":"is due by "+fmtD(due.date)}
+      ${due?`<div class="hint ${due.late>=0?"h-red":"h-amber"}">${icn("alert",15)} ${due.label}: ${inr(due.amount)} ${due.late>0?(due.parts.length>1?"pending since ":"was due on ")+fmtD(due.date)+" ("+due.late+" days ago)":due.late===0?"is due today":"is due by "+fmtD(due.date)}
+        ${dueParts(due).map(x=>`<div style="font-weight:500;margin-top:3px">• ${x}</div>`).join("")}
         <div class="btnrow">${waA(nums,reminderText(b,due),icn("chat",15)+" Send polite payment reminder","btn btn-sm btn-green")}</div></div>`:""}
       ${bal>0&&b.status!=="CANCELLED"?`<div class="btnrow"><button class="btn btn-sm" onclick="sendPayInfo('${b.id}')">${icn("star",15)} Send bank details and QR code</button></div>`:""}
     </div>
@@ -1377,14 +1379,21 @@ function payPlan(b){const ev=(b.booking_events||[]).filter(e=>e.active).map(e=>e
   if(!ev){const ci=bkRooms(b).map(r=>r.check_in).sort()[0];return ci&&isRoomOnly(b)?[{pct:100,label:"Room payment",date:ci<b.booking_date?b.booking_date:ci,need:Math.round(b.total_amount)}]:[];}
   return PAY_PLAN.map(([pct,label,days])=>{let date=days==null?b.booking_date:addDays(ev,-days);if(date<b.booking_date)date=b.booking_date;
     return {pct,label,date,need:Math.round(b.total_amount*pct/100)};});}
-function payDue(b){if(b.status==="CANCELLED")return null;
-  for(const m of payPlan(b))if(b.paid_amount<m.need-0.5)return {...m,amount:m.need-b.paid_amount,late:diff(m.date,T())};
-  return null;}
+/* What is due now. If more than one stage has already fallen due (for example the 25% advance AND the 75% stage),
+   the amount is the TOTAL of all of them, counted from the oldest unpaid date. "parts" lists each stage separately. */
+function payDue(b){if(b.status==="CANCELLED")return null;const t=T(),plan=payPlan(b),paid=+b.paid_amount;
+  const unmet=plan.filter(m=>paid<m.need-0.5);if(!unmet.length)return null;
+  const part=m=>{const i=plan.indexOf(m),prev=i>0?plan[i-1].need:0;return {label:m.label,date:m.date,amount:m.need-Math.max(paid,prev)};};
+  const passed=unmet.filter(m=>m.date<=t);
+  if(!passed.length){const m=unmet[0];return {...m,amount:m.need-paid,late:diff(m.date,t),parts:[part(m)]};}
+  const top=passed[passed.length-1],first=passed[0];
+  return {...top,label:passed.length>1?"Total due till today":top.label,date:first.date,amount:top.need-paid,late:diff(first.date,t),parts:passed.map(part)};}
+const dueParts=d=>d&&d.parts.length>1?d.parts.map(x=>`${x.label}: ${inr(x.amount)} (due ${fmtD(x.date)})`):[];
 function dueBookings(days){const lim=addDays(T(),days);
   return bookings.map(b=>({b,d:payDue(b)})).filter(x=>x.d&&x.d.date<=lim).sort((a,c)=>a.d.date<c.d.date?-1:1);}
 function dueChip(d){return d.late>0?`<span class="chip ch-red">DUE ${d.late}D AGO</span>`:d.late===0?`<span class="chip ch-amber">DUE TODAY</span>`:`<span class="chip ch-blue">DUE ${fmtDs(d.date).toUpperCase()}</span>`;}
 function reminderText(b,d){const e=(b.booking_events||[]).filter(x=>x.active)[0];
-  return `Namaste ${b.customer_name} ji,\nGreetings from ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}.\n\nThis is a gentle reminder regarding your booking ${b.booking_no}${e?` (${cap(e.event_type)} on ${fmtD(e.event_date)})`:""}.\nAs per the payment schedule, an amount of *${inr(d.amount)}* ${d.late>0?"was due on":"is due by"} ${fmtD(d.date)}.\n\nBooking amount: ${inr(b.total_amount)}\nReceived so far: ${inr(b.paid_amount)}\nBalance: ${inr(Math.max(b.total_amount-b.paid_amount,0))}\n\nKindly ignore this message if the payment has already been made.\nThank you for choosing ${cap(BIZ.name||"Rosellia")}. We look forward to hosting you.${BIZ.phone?"\nContact: "+BIZ.phone:""}`;}
+  return `Namaste ${b.customer_name} ji,\nGreetings from ${cap(BIZ.name||"Rosellia")} ${BIZ.tagline||"Banquets & Suites"}.\n\nThis is a gentle reminder regarding your booking ${b.booking_no}${e?` (${cap(e.event_type)} on ${fmtD(e.event_date)})`:""}.\n${d.parts&&d.parts.length>1?`As per the payment schedule, a total of *${inr(d.amount)}* is now due:\n${dueParts(d).map(x=>"• "+x).join("\n")}`:`As per the payment schedule, an amount of *${inr(d.amount)}* ${d.late>0?"was due on":"is due by"} ${fmtD(d.date)}.`}\n\nBooking amount: ${inr(b.total_amount)}\nReceived so far: ${inr(b.paid_amount)}\nBalance: ${inr(Math.max(b.total_amount-b.paid_amount,0))}\n\nKindly ignore this message if the payment has already been made.\nThank you for choosing ${cap(BIZ.name||"Rosellia")}. We look forward to hosting you.${BIZ.phone?"\nContact: "+BIZ.phone:""}`;}
 
 /* ================= PAYMENT RECEIPT ================= */
 function inWords(n){n=Math.round(Number(n)||0);if(n===0)return"Zero";
